@@ -1,0 +1,5 @@
+<library path="cyberdog_gps">
+  <class type="cyberdog::sensor::GpsCarpo" base_class_type="cyberdog::sensor::GpsBase">
+    <description>This is a bcm_gps plugin.</description>
+  </class>
+</library>
