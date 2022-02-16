@@ -35,7 +35,8 @@ public:
   void Stop();
   void Close();
   bool Ready();
-  bool Started();
+  bool IsStarted();
+  bool IsOpened();
   void SetCallback(NMEA_callback NMEA_cb);
   void SetCallback(PAYLOAD_callback PAYLOAD_cb);
 

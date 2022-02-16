@@ -28,10 +28,10 @@ namespace sensor
 class GpsCarpo : public cyberdog::sensor::GpsBase
 {
 public:
-  void Open() override;
-  void Start() override;
-  void Stop() override;
-  void Close() override;
+  bool Open() override;
+  bool Start() override;
+  bool Stop() override;
+  bool Close() override;
 
 private:
   std::shared_ptr<bcm_gps::GPS> bcmgps_;
