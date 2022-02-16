@@ -19,6 +19,8 @@ find_package(manager_base REQUIRED)
 find_package(protocol REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(cyberdog_system REQUIRED)
+find_package(cyberdog_gps REQUIRED)
+find_package(bream_vendor REQUIRED)
 
 include_directories(include)
 
@@ -32,6 +34,7 @@ ament_target_dependencies(${PROJECT_NAME}
   manager_base
   cyberdog_system
   pluginlib
+  cyberdog_gps
   )
 
 install(TARGETS 

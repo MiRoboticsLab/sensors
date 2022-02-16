@@ -27,16 +27,24 @@ cyberdog::sensor::SensorManager::~SensorManager()
 void cyberdog::sensor::SensorManager::Config()
 {
   // TODO: get info from configure
+  std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>> classloader;
+  classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>>(
+    "cyberdog_gps", "cyberdog::sensor::GpsBase");
+  gps_ = classloader->createSharedInstance("cyberdog::sensor::GpsCarpo");
+  gps_->SetPayloadCallback(std::bind(&SensorManager::gps_payload_callback, this, std::placeholders::_1));
 }
 
 bool cyberdog::sensor::SensorManager::Init()
 {
   // TODO: register manager base functions
+  gps_->Open();
+
   return true;
 }
 
 void cyberdog::sensor::SensorManager::Run()
 {
+  gps_->Start();
   rclcpp::spin(node_ptr_);
   rclcpp::shutdown();
 }
@@ -76,4 +84,11 @@ void cyberdog::sensor::SensorManager::OnProtected()
 void cyberdog::sensor::SensorManager::OnActive()
 {
   std::cout << "on active\n";
+}
+
+void cyberdog::sensor::SensorManager::gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg)
+{
+  gps_publisher_->publish(*msg);
+  std::cout << "hello_1 " << std::endl;
+
 }
