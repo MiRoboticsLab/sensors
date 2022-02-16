@@ -16,6 +16,9 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include "pluginlib/class_loader.hpp"
+#include "bcmgps_base/bcmgps_base.hpp"
+#include "protocol/msg/gps_payload.hpp"
 #include "manager_base/manager_base.hpp"
 
 namespace cyberdog
@@ -47,6 +50,12 @@ private:
 private:
   std::string name_;
   rclcpp::Node::SharedPtr node_ptr_ {nullptr};
+  void gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg);
+
+private:
+  std::shared_ptr<cyberdog::sensor::GpsBase> gps_;
+  rclcpp::Publisher<protocol::msg::GpsPayload>::SharedPtr gps_publisher_;
+
 };  // class SensorManager
 }  // namespace sensor
 }  // namespace cyberdog
