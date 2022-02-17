@@ -16,30 +16,35 @@
 
 #include "bcmgps_plugin/bcmgps_plugin.hpp"
 #include "pluginlib/class_list_macros.hpp"
+#include "rclcpp/rclcpp.hpp"
 
-void cyberdog::sensor::GpsCarpo::Open()
+bool cyberdog::sensor::GpsCarpo::Open()
 {
   bcmgps_ = std::make_shared<bcm_gps::GPS>();
   bcmgps_->SetCallback(
     std::bind(
       &GpsCarpo::BCMGPS_Payload_callback, this,
       std::placeholders::_1));
+  return bcmgps_->IsOpened();
 }
 
-void cyberdog::sensor::GpsCarpo::Start()
+bool cyberdog::sensor::GpsCarpo::Start()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Start();}
+  return bcmgps_->IsStarted();
 }
 
-void cyberdog::sensor::GpsCarpo::Stop()
+bool cyberdog::sensor::GpsCarpo::Stop()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Stop();}
+  return bcmgps_->IsStarted();
 }
 
-void cyberdog::sensor::GpsCarpo::Close()
+bool cyberdog::sensor::GpsCarpo::Close()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Close();}
   bcmgps_ = nullptr;
+  return bcmgps_->IsOpened();
 }
 
 void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(
@@ -57,6 +62,9 @@ void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(
   cyberdog_payload->fix_type = payload->fixType;
   cyberdog_payload->num_sv = payload->numSV;
   if (payload_callback_ != nullptr) {payload_callback_(cyberdog_payload);}
+  else{
+      RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "payload_callback_==nullptr");
+  }
 }
 
 PLUGINLIB_EXPORT_CLASS(cyberdog::sensor::GpsCarpo, cyberdog::sensor::GpsBase)

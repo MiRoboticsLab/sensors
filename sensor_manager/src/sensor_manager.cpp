@@ -27,6 +27,9 @@ cyberdog::sensor::SensorManager::~SensorManager()
 void cyberdog::sensor::SensorManager::Config()
 {
   // TODO: get info from configure
+  gps_publisher_ = node_ptr_->create_publisher<protocol::msg::GpsPayload>(
+  "gps_payload",
+  rclcpp::SystemDefaultsQoS());
   std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>> classloader;
   classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>>(
     "cyberdog_gps", "cyberdog::sensor::GpsBase");
@@ -37,14 +40,14 @@ void cyberdog::sensor::SensorManager::Config()
 bool cyberdog::sensor::SensorManager::Init()
 {
   // TODO: register manager base functions
-  gps_->Open();
+  bool gps_opened=gps_->Open();
 
   return true;
 }
 
 void cyberdog::sensor::SensorManager::Run()
 {
-  gps_->Start();
+  bool gps_started=gps_->Start();
   rclcpp::spin(node_ptr_);
   rclcpp::shutdown();
 }

@@ -102,7 +102,12 @@ bool bcm_gps::GPS::Ready()
   return ready_;
 }
 
-bool bcm_gps::GPS::Started()
+bool bcm_gps::GPS::IsOpened()
+{
+  return opened_;
+}
+
+bool bcm_gps::GPS::IsStarted()
 {
   return start_;
 }
