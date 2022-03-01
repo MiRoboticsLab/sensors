@@ -27,20 +27,35 @@ cyberdog::sensor::SensorManager::~SensorManager()
 void cyberdog::sensor::SensorManager::Config()
 {
   // TODO: get info from configure
+  // gps
+  
   gps_publisher_ = node_ptr_->create_publisher<protocol::msg::GpsPayload>(
   "gps_payload",
   rclcpp::SystemDefaultsQoS());
-  std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>> classloader;
-  classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>>(
+  std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>> gps_classloader;
+  gps_classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::GpsBase>>(
     "cyberdog_gps", "cyberdog::sensor::GpsBase");
-  gps_ = classloader->createSharedInstance("cyberdog::sensor::GpsCarpo");
+  gps_ = gps_classloader->createSharedInstance("cyberdog::sensor::GpsCarpo");
   gps_->SetPayloadCallback(std::bind(&SensorManager::gps_payload_callback, this, std::placeholders::_1));
+
+  // ultrasonic
+  ultrasonic_publisher_ = node_ptr_->create_publisher<sensor_msgs::msg::Range>(
+  "ultrasonic_payload",rclcpp::SystemDefaultsQoS());
+  std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::UltrasonicBase>> ultrasonic_classloader;
+
+  ultrasonic_classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::UltrasonicBase>>(
+  "cyberdog_ultrasonic", "cyberdog::sensor::UltrasonicBase");
+  ultrasonic_ = ultrasonic_classloader->createSharedInstance("cyberdog::sensor::UltrasonicCarpo");
+  ultrasonic_->SetPayloadCallback(std::bind(&SensorManager::ultrasonic_payload_callback, this, std::placeholders::_1));
+  RCLCPP_INFO(rclcpp::get_logger("sensor_manager"), "Configuring,success");
+
 }
 
 bool cyberdog::sensor::SensorManager::Init()
 {
   // TODO: register manager base functions
   bool gps_opened=gps_->Open();
+  bool ultrasonic_opened=ultrasonic_->Open();
 
   return true;
 }
@@ -48,6 +63,8 @@ bool cyberdog::sensor::SensorManager::Init()
 void cyberdog::sensor::SensorManager::Run()
 {
   bool gps_started=gps_->Start();
+  bool ultrasonic_started= ultrasonic_->Start();
+
   rclcpp::spin(node_ptr_);
   rclcpp::shutdown();
 }
@@ -92,6 +109,15 @@ void cyberdog::sensor::SensorManager::OnActive()
 void cyberdog::sensor::SensorManager::gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg)
 {
   gps_publisher_->publish(*msg);
-  std::cout << "hello_1 " << std::endl;
+  std::cout << "hello_gps " << std::endl;
 
 }
+
+
+void cyberdog::sensor::SensorManager::ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg)
+{
+  ultrasonic_publisher_->publish(*msg);
+  std::cout << "hello_ultrasonic" << std::endl;
+
+}
+

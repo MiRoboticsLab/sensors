@@ -13,8 +13,8 @@
   <depend>manager_base</depend>
   <depend>pluginlib</depend>
   <depend>cyberdog_gps</depend>
-  <depend>bream_vendor</depend>
-
+  <depend>bream_vendor</depend>    
+  <depend>cyberdog_ultrasonic</depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
