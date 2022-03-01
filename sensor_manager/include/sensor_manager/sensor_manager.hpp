@@ -20,6 +20,13 @@
 #include "bcmgps_base/bcmgps_base.hpp"
 #include "protocol/msg/gps_payload.hpp"
 #include "manager_base/manager_base.hpp"
+#include "ultrasonic_base/ultrasonic_base.hpp"
+#include <sensor_msgs/msg/range.hpp>
+#include "rclcpp/rclcpp.hpp"
+
+
+
+
 
 namespace cyberdog
 {
@@ -51,10 +58,17 @@ private:
   std::string name_;
   rclcpp::Node::SharedPtr node_ptr_ {nullptr};
   void gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg);
+  void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
+
 
 private:
   std::shared_ptr<cyberdog::sensor::GpsBase> gps_;
   rclcpp::Publisher<protocol::msg::GpsPayload>::SharedPtr gps_publisher_;
+
+  std::shared_ptr<cyberdog::sensor::UltrasonicBase> ultrasonic_;
+  rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr ultrasonic_publisher_;
+
+
 
 };  // class SensorManager
 }  // namespace sensor

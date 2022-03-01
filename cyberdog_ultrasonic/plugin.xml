@@ -1,0 +1,5 @@
+<library path="cyberdog_ultrasonic">
+  <class type="cyberdog::sensor::UltrasonicCarpo" base_class_type="cyberdog::sensor::UltrasonicBase">
+    <description>This is a Ultrasonic plugin.</description>
+  </class>
+</library>
