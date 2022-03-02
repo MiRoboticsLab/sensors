@@ -22,6 +22,7 @@ find_package(cyberdog_system REQUIRED)
 find_package(cyberdog_gps REQUIRED)
 find_package(bream_vendor REQUIRED)
 find_package(cyberdog_ultrasonic REQUIRED)
+find_package(cyberdog_common REQUIRED)
 
 
 include_directories(include)
