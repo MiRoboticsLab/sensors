@@ -50,15 +50,21 @@ bool cyberdog::sensor::UltrasonicCarpo::Open()
       rclcpp::get_logger("cyberdog_ultrasonic"), "difftime = %2f ",
       difftime(time(nullptr), time_opened_delay));
   }
-
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic started successfully started");
+  if (opened_ == false) {
+    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic open failed ");
+  } else {
+    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic open successfully ");
+  }
   return opened_;
 }
 
 bool cyberdog::sensor::UltrasonicCarpo::Start()
 {
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic started successfully opened");
-  return opened_;
+  if (opened_ == false) {
+    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic Start failed ");
+  } else {
+    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic Start successfully ");
+  }  return opened_;
 }
 
 bool cyberdog::sensor::UltrasonicCarpo::Stop()

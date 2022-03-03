@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <unistd.h>
-
 #include <map>
 #include <vector>
 #include <string>
@@ -182,6 +181,13 @@ bool bcm_gps::GPS::Init()
   toml::value value;
   auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
   auto local_config_dir = local_share_dir + std::string("/toml_config/sensors/bcmgps_config.toml");
+  if (access(local_config_dir.c_str(), F_OK) != 0) {
+    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "%s do not exist!", local_config_dir.c_str());
+    RCLCPP_INFO(
+      rclcpp::get_logger(
+        "cyberdog_gps"), "init failed");
+    return false;
+  }
   if (!cyberdog::common::CyberdogToml::ParseFile(
       std::string(local_share_dir) +
       "/toml_config/sensors/bcmgps_config.toml", value))
@@ -224,6 +230,15 @@ bool bcm_gps::GPS::Init()
   if (!cyberdog::common::CyberdogToml::Get(value, "AckAiding", AckAiding)) {
     RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key AckAiding from toml");
   }
+
+  if (access(patch_path.c_str(), F_OK) != 0) {
+    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "%s do not exist!", patch_path.c_str());
+    RCLCPP_INFO(
+      rclcpp::get_logger(
+        "cyberdog_gps"), "init failed");
+    return false;
+  }
+
   // reset entire chip
   system("echo 0 > /sys/devices/bcm4775/nstandby");
   sleep(1);

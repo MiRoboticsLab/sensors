@@ -23,11 +23,13 @@ find_package(cyberdog_gps REQUIRED)
 find_package(bream_vendor REQUIRED)
 find_package(cyberdog_ultrasonic REQUIRED)
 find_package(cyberdog_common REQUIRED)
+find_package(cyberdog_tof REQUIRED)
+
 
 
 include_directories(include)
 
-add_executable(${PROJECT_NAME} 
+add_executable(${PROJECT_NAME}
   src/sensor_manager.cpp
   src/main.cpp)
 
@@ -39,12 +41,11 @@ ament_target_dependencies(${PROJECT_NAME}
   pluginlib
   cyberdog_gps
   cyberdog_ultrasonic
-  )
+  cyberdog_tof)
 
-install(TARGETS 
+install( TARGETS
   ${PROJECT_NAME}
-  DESTINATION lib/${PROJECT_NAME}
-  )
+  DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

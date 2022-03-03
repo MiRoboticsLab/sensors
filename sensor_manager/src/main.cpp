@@ -11,14 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <string>
+#include <memory>
 #include "sensor_manager/sensor_manager.hpp"
 
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto sensor_manager = std::make_shared<cyberdog::sensor::SensorManager>(std::string("sensor_manager"));
+  auto sensor_manager =
+    std::make_shared<cyberdog::sensor::SensorManager>(std::string("sensor_manager"));
   sensor_manager->Config();
-  if(!sensor_manager->Init()) {
+  if (!sensor_manager->Init()) {
     std::cout << "sensor manager init failed!\n";
     return -1;
   }
