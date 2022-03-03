@@ -1,0 +1,5 @@
+<library path="cyberdog_tof">
+  <class type="cyberdog::sensor::TofCarpo" base_class_type="cyberdog::sensor::TofBase">
+    <description>This is a Tof plugin.</description>
+  </class>
+</library>
