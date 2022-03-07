@@ -23,6 +23,7 @@
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
+#include "cyberdog_common/cyberdog_log.hpp"
 
 
 bool cyberdog::sensor::TofCarpo::Open()
@@ -30,34 +31,35 @@ bool cyberdog::sensor::TofCarpo::Open()
   multiple_tof_payload = std::make_shared<protocol::msg::MultipleTof>();
 
   if (SingleOpen(protocol::msg::Tof::LEFT_FRONT)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_left_front opened successfully");
+    INFO("[cyberdog_tof]: tof_opened_left_front opened successfully");
+
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_left_front opened failed");
+    ERROR("[cyberdog_tof]: tof_opened_left_front opened failed");
   }
 /*
   if (SingleOpen(protocol::msg::Tof::LEFT_BACK)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_left_back opened successfully");
+    INFO("[cyberdog_tof]: tof_opened_left_back opened successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_left_back opened failed");
+    ERROR("[cyberdog_tof]: tof_opened_left_back opened failed");
   }
 
   if (SingleOpen(protocol::msg::Tof::RIGHT_FRONT)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_right_front opened successfully");
+    INFO("[cyberdog_tof]: tof_opened_right_front opened successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_right_front opened failed");
+    ERROR("[cyberdog_tof]: tof_opened_right_front opened failed");
   }
 
   if (SingleOpen(protocol::msg::Tof::RIGHT_BACK)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_right_back opened successfully");
+    INFO("[cyberdog_tof]: tof_opened_right_back opened successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof_opened_right_back opened failed");
+    ERROR("[cyberdog_tof]: tof_opened_right_back opened failed");
   }
 */
   tof_pub_thread = std::thread(std::bind(&cyberdog::sensor::TofCarpo::tof_pub_callback, this));
   opened_ = tof_opened_left_back && tof_opened_left_back &&
     tof_opened_right_front && tof_opened_right_back;
-  RCLCPP_INFO(
-    rclcpp::get_logger("cyberdog_tof"), "tofs opened status = %d ",
+  INFO(
+    "[cyberdog_tof]: tofs opened status = %d ",
     static_cast<int>(opened_));
   return opened_;
 }
@@ -65,8 +67,8 @@ bool cyberdog::sensor::TofCarpo::Open()
 
 bool cyberdog::sensor::TofCarpo::Start()
 {
-  RCLCPP_INFO(
-    rclcpp::get_logger("cyberdog_tof"), "tof started status = %d ",
+  INFO(
+    "[cyberdog_tof]: tof started status = %d ",
     static_cast<int>(opened_));
   return opened_;
 }
@@ -74,24 +76,24 @@ bool cyberdog::sensor::TofCarpo::Start()
 bool cyberdog::sensor::TofCarpo::Stop()
 {
   if (SingleStop(protocol::msg::Tof::LEFT_FRONT)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof left front stoped successfully");
+    INFO("[cyberdog_tof]: tof left front stoped successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof left front stoped failed");
+    ERROR("[cyberdog_tof]: tof left front stoped failed");
   }
   if (SingleStop(protocol::msg::Tof::LEFT_BACK)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof left back stoped successfully");
+    INFO("[cyberdog_tof]: tof left back stoped successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof left back stoped failed");
+    ERROR("[cyberdog_tof]: tof left back stoped failed");
   }
   if (SingleStop(protocol::msg::Tof::RIGHT_FRONT)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof right front stoped successfully");
+    INFO("[cyberdog_tof]: tof right front stoped successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof right front stoped failed");
+    ERROR("[cyberdog_tof]: tof right front stoped failed");
   }
   if (SingleStop(protocol::msg::Tof::RIGHT_BACK)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof right back stoped successfully");
+    INFO("[cyberdog_tof]: tof right back stoped successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof right back stoped failed");
+    ERROR("[cyberdog_tof]: tof right back stoped failed");
   }
   closed_ = (tof_started_left_front || tof_started_left_back ||
     tof_started_right_front || tof_started_right_back);
@@ -101,9 +103,9 @@ bool cyberdog::sensor::TofCarpo::Stop()
 bool cyberdog::sensor::TofCarpo::Close()
 {
   if (closed_ == true) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof closed successfully");
+    INFO("[cyberdog_tof]: tof closed successfully");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "tof closed failed");
+    ERROR("[cyberdog_tof]: tof closed failed");
   }
   return closed_;
 }
@@ -114,8 +116,7 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
     // left_front
     case protocol::msg::Tof::LEFT_FRONT: {
         tof_can_left_front->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_left_front->BREAK_VAR(tof_can_left_front->GetData()->tof_data);
         tof_can_left_front->BREAK_VAR(tof_can_left_front->GetData()->tof_data_clock);
         tof_can_left_front->LINK_VAR(tof_can_left_front->GetData()->enable_off_ack);
@@ -123,21 +124,19 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
         time_t time_left_front = time(nullptr);
         while (tof_started_left_front == true && difftime(time(nullptr), time_left_front) < 2.0f) {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
-          // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "difftime = %2f "
+          // INFO("[cyberdog_tof]: difftime = %2f "
           // ,difftime(time(nullptr), time_left_front));
         }
 
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof stoped successfully !tof_started_left_front= %d ",
+        INFO(
+          "[cyberdog_tof]: tof stoped successfully !tof_started_left_front= %d ",
           static_cast<int>(!tof_started_left_front));
         return !tof_started_left_front;
       }
     // left_back
     case protocol::msg::Tof::LEFT_BACK: {
         tof_can_left_back->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_left_back->BREAK_VAR(tof_can_left_back->GetData()->tof_data);
         tof_can_left_back->BREAK_VAR(tof_can_left_back->GetData()->tof_data_clock);
         tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->enable_off_ack);
@@ -149,17 +148,15 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
           // "difftime = %2f ",difftime(time(nullptr), time_left_back));
         }
 
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof stoped successfully !tof_started_left_back= %d ",
+        INFO(
+          "[cyberdog_tof]: tof stoped successfully !tof_started_left_back= %d ",
           static_cast<int>(!tof_started_left_back));
         return !tof_started_left_back;
       }
     // right_front
     case protocol::msg::Tof::RIGHT_FRONT: {
         tof_can_right_front->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_right_front->BREAK_VAR(tof_can_right_front->GetData()->tof_data);
         tof_can_right_front->BREAK_VAR(tof_can_right_front->GetData()->tof_data_clock);
         tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->enable_off_ack);
@@ -169,20 +166,18 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
           difftime(time(nullptr), time_right_front) < 2.0f)
         {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
-          // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "difftime = %2f "
+          // INFO("[cyberdog_tof]: difftime = %2f "
           // ,difftime(time(nullptr), time_right_front));
         }
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof stoped successfully !tof_started_right_front= %d ",
+        INFO(
+          "[cyberdog_tof]: tof stoped successfully !tof_started_right_front= %d ",
           static_cast<int>(!tof_started_right_front));
         return !tof_started_right_front;
       }
     // right_back
     case protocol::msg::Tof::RIGHT_BACK: {
         tof_can_right_back->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_right_back->BREAK_VAR(tof_can_right_back->GetData()->tof_data);
         tof_can_right_back->BREAK_VAR(tof_can_right_back->GetData()->tof_data_clock);
         tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->enable_off_ack);
@@ -193,9 +188,8 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
           // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"),
           // "difftime = %2f ",difftime(time(nullptr), time_right_back));
         }
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof stoped successfully !tof_started_right_back= %d ",
+        INFO(
+          "[cyberdog_tof]: tof stoped successfully !tof_started_right_back= %d ",
           static_cast<int>(!tof_started_right_back));
         return !tof_started_right_back;
       }
@@ -210,14 +204,14 @@ void cyberdog::sensor::TofCarpo::tof_pub_callback()
   bool publish_ok = (tof_started_left_front || tof_started_left_back ||
     tof_started_right_front || tof_started_right_back);
   while (publish_ok) {
-    // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "payload_callback ");
+    // INFO("[cyberdog_tof]: payload_callback ");
     std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
     if (payload_callback_ != nullptr && multiple_tof_payload != nullptr) {
       payload_callback_(multiple_tof_payload);
-      RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "payload_callback is ok");
+      INFO("[cyberdog_tof]: payload_callback is ok");
     } else {
-      RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "payload_callback_failed");
+      ERROR("[cyberdog_tof]: payload_callback_failed");
     }
   }
 }
@@ -231,10 +225,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
         auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
         auto path = local_share_dir + std::string("/toml_config/sensors/tof.toml");
         if (access(path.c_str(), F_OK) != 0) {
-          RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "%s do not exist!", path.c_str());
-          RCLCPP_INFO(
-            rclcpp::get_logger(
-              "cyberdog_tof"), "fail to open tof,tof_opened_left_front=   %d ",
+          ERROR("[cyberdog_tof]: %s do not exist!", path.c_str());
+          ERROR(
+            "[cyberdog_tof]: fail to open tof,tof_opened_left_front=   %d ",
             static_cast<int>(tof_opened_left_front));
           return tof_opened_left_front;
         }
@@ -244,8 +237,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::
             left_front_callback, this, std::placeholders::_1, std::placeholders::_2));
         tof_can_left_front->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_left_front->LINK_VAR(tof_can_left_front->GetData()->enable_on_ack);
 
         time_t time_left_front = time(nullptr);
@@ -255,9 +247,8 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           // "difftime = %2f ",difftime(time(nullptr), time_left_front));
         }
 
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof opened successfully tof_opened_left_front= %d ",
+        INFO(
+          "[cyberdog_tof]: tof opened successfully tof_opened_left_front= %d ",
           static_cast<int>(tof_opened_left_front));
         return tof_opened_left_front;
       }
@@ -267,10 +258,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
         auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
         auto path = local_share_dir + std::string("/toml_config/sensors/tof.toml");
         if (access(path.c_str(), F_OK) != 0) {
-          RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "%s do not exist!", path.c_str());
-          RCLCPP_INFO(
-            rclcpp::get_logger(
-              "cyberdog_tof"), "fail to open tof,tof_opened_left_back=   %d ",
+          ERROR("[cyberdog_tof]: %s do not exist!", path.c_str());
+          ERROR(
+            "[cyberdog_tof]: fail to open tof,tof_opened_left_back=   %d ",
             static_cast<int>(tof_opened_left_back));
           return tof_opened_left_back;
         }
@@ -280,8 +270,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::left_back_callback,
             this, std::placeholders::_1, std::placeholders::_2));
         tof_can_left_back->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->enable_on_ack);
         // tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->tof_data_array);
         // tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->tof_data_clock);
@@ -291,9 +280,8 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"),
           // "difftime = %2f ",difftime(time(nullptr), time_left_back));
         }
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof opened successfully tof_opened_left_back= %d ",
+        INFO(
+          "[cyberdog_tof]: tof opened successfully tof_opened_left_back= %d ",
           static_cast<int>(tof_opened_left_back));
         return tof_opened_left_back;
       }
@@ -303,10 +291,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
         auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
         auto path = local_share_dir + std::string("/toml_config/sensors/tof.toml");
         if (access(path.c_str(), F_OK) != 0) {
-          RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "%s do not exist!", path.c_str());
-          RCLCPP_INFO(
-            rclcpp::get_logger(
-              "cyberdog_tof"), "fail to open tof,tof_opened_right_front=   %d ",
+          ERROR("[cyberdog_tof]: %s do not exist!", path.c_str());
+          ERROR(
+            "[cyberdog_tof]: fail to open tof,tof_opened_right_front=   %d ",
             static_cast<int>(tof_opened_right_front));
           return tof_opened_right_front;
         }
@@ -316,8 +303,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::
             right_front_callback, this, std::placeholders::_1, std::placeholders::_2));
         tof_can_right_front->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->enable_on_ack);
         // tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->tof_data_array);
         // tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->tof_data_clock);
@@ -329,9 +315,8 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"),
           // "difftime = %2f ",difftime(time(nullptr), time_right_front));
         }
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof opened successfully tof_opened_right_front= %d ",
+        INFO(
+          "[cyberdog_tof]: tof opened successfully tof_opened_right_front= %d ",
           static_cast<int>(tof_opened_right_front));
         return tof_opened_right_front;
       }
@@ -341,10 +326,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
         auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
         auto path = local_share_dir + std::string("/toml_config/sensors/tof.toml");
         if (access(path.c_str(), F_OK) != 0) {
-          RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"), "%s do not exist!", path.c_str());
-          RCLCPP_INFO(
-            rclcpp::get_logger(
-              "cyberdog_tof"), "fail to open tof,tof_opened_right_back=   %d ",
+          ERROR("[cyberdog_tof]: %s do not exist!", path.c_str());
+          ERROR(
+            "[cyberdog_tof]: fail to open tof,tof_opened_right_back=   %d ",
             static_cast<int>(tof_opened_right_back));
           return tof_opened_right_back;
         }
@@ -354,8 +338,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::
             right_back_callback, this, std::placeholders::_1, std::placeholders::_2));
         tof_can_right_back->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->enable_on_ack);
         // tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->tof_data_array);
         // tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->tof_data_clock);
@@ -365,9 +348,8 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"),
           // "difftime = %2f ",difftime(time(nullptr), time_right_back));
         }
-        RCLCPP_INFO(
-          rclcpp::get_logger(
-            "cyberdog_tof"), "tof opened successfully tof_opened_right_back= %d ",
+        INFO(
+          "[cyberdog_tof]: tof opened successfully tof_opened_right_back= %d ",
           static_cast<int>(tof_opened_right_back));
         return tof_opened_right_back;
       }

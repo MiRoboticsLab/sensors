@@ -17,6 +17,8 @@
 #include "bcmgps_plugin/bcmgps_plugin.hpp"
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "cyberdog_common/cyberdog_log.hpp"
+
 
 bool cyberdog::sensor::GpsCarpo::Open()
 {
@@ -61,9 +63,8 @@ void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(
   cyberdog_payload->lon = payload->lon * 1e-7;
   cyberdog_payload->fix_type = payload->fixType;
   cyberdog_payload->num_sv = payload->numSV;
-  if (payload_callback_ != nullptr) {payload_callback_(cyberdog_payload);}
-  else{
-      RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "payload_callback_==nullptr");
+  if (payload_callback_ != nullptr) {payload_callback_(cyberdog_payload);} else {
+    INFO("[cyberdog_gps]: payload_callback_==nullptr ");
   }
 }
 
