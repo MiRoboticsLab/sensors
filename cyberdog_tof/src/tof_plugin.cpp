@@ -114,8 +114,7 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
     // left_front
     case protocol::msg::Tof::LEFT_FRONT: {
         tof_can_left_front->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_left_front->BREAK_VAR(tof_can_left_front->GetData()->tof_data);
         tof_can_left_front->BREAK_VAR(tof_can_left_front->GetData()->tof_data_clock);
         tof_can_left_front->LINK_VAR(tof_can_left_front->GetData()->enable_off_ack);
@@ -136,8 +135,7 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
     // left_back
     case protocol::msg::Tof::LEFT_BACK: {
         tof_can_left_back->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_left_back->BREAK_VAR(tof_can_left_back->GetData()->tof_data);
         tof_can_left_back->BREAK_VAR(tof_can_left_back->GetData()->tof_data_clock);
         tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->enable_off_ack);
@@ -158,8 +156,7 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
     // right_front
     case protocol::msg::Tof::RIGHT_FRONT: {
         tof_can_right_front->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_right_front->BREAK_VAR(tof_can_right_front->GetData()->tof_data);
         tof_can_right_front->BREAK_VAR(tof_can_right_front->GetData()->tof_data_clock);
         tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->enable_off_ack);
@@ -181,8 +178,7 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
     // right_back
     case protocol::msg::Tof::RIGHT_BACK: {
         tof_can_right_back->Operate(
-          "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_off", std::vector<uint8_t>{});
         tof_can_right_back->BREAK_VAR(tof_can_right_back->GetData()->tof_data);
         tof_can_right_back->BREAK_VAR(tof_can_right_back->GetData()->tof_data_clock);
         tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->enable_off_ack);
@@ -244,8 +240,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::
             left_front_callback, this, std::placeholders::_1, std::placeholders::_2));
         tof_can_left_front->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_left_front->LINK_VAR(tof_can_left_front->GetData()->enable_on_ack);
 
         time_t time_left_front = time(nullptr);
@@ -280,8 +275,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::left_back_callback,
             this, std::placeholders::_1, std::placeholders::_2));
         tof_can_left_back->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->enable_on_ack);
         // tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->tof_data_array);
         // tof_can_left_back->LINK_VAR(tof_can_left_back->GetData()->tof_data_clock);
@@ -316,8 +310,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::
             right_front_callback, this, std::placeholders::_1, std::placeholders::_2));
         tof_can_right_front->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->enable_on_ack);
         // tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->tof_data_array);
         // tof_can_right_front->LINK_VAR(tof_can_right_front->GetData()->tof_data_clock);
@@ -354,8 +347,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
             &cyberdog::sensor::TofCarpo::
             right_back_callback, this, std::placeholders::_1, std::placeholders::_2));
         tof_can_right_back->Operate(
-          "enable_on", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00});
+          "enable_on", std::vector<uint8_t>{});
         tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->enable_on_ack);
         // tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->tof_data_array);
         // tof_can_right_back->LINK_VAR(tof_can_right_back->GetData()->tof_data_clock);

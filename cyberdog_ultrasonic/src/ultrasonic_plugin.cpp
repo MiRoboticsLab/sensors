@@ -20,6 +20,7 @@
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
+#include "cyberdog_common/cyberdog_log.hpp"
 
 
 bool cyberdog::sensor::UltrasonicCarpo::Open()
@@ -28,10 +29,8 @@ bool cyberdog::sensor::UltrasonicCarpo::Open()
   auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
   auto path = local_share_dir + std::string("/toml_config/sensors/ultrasonic.toml");
   if (access(path.c_str(), F_OK) != 0) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "%s do not exist!", path.c_str());
-    RCLCPP_INFO(
-      rclcpp::get_logger(
-        "cyberdog_ultrasonic"), "fail to start ultrasonic,started =   %d ",
+    INFO("%s do not exist!", path.c_str());
+    INFO("fail to start ultrasonic,started =   %d ",
       static_cast<int>(opened_));
     return opened_;
   }
@@ -40,20 +39,19 @@ bool cyberdog::sensor::UltrasonicCarpo::Open()
     std::bind(
       &cyberdog::sensor::UltrasonicCarpo::recv_callback,
       this, std::placeholders::_1, std::placeholders::_2));
-  ultrasonic_can_->Operate("enable_on", std::vector<uint8_t>{0x00});
+  ultrasonic_can_->Operate("enable_on", std::vector<uint8_t>{});
   ultrasonic_can_->LINK_VAR(ultrasonic_can_->GetData()->enable_on_ack);
 
   time_t time_opened_delay = time(nullptr);
   while (opened_ == false && difftime(time(nullptr), time_opened_delay) < 2.0f) {
     std::this_thread::sleep_for(std::chrono::microseconds(30000));
-    RCLCPP_INFO(
-      rclcpp::get_logger("cyberdog_ultrasonic"), "difftime = %2f ",
+    INFO("difftime = %2f ",
       difftime(time(nullptr), time_opened_delay));
   }
   if (opened_ == false) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic open failed ");
+    INFO("ultrasonic open failed ");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic open successfully ");
+    INFO("ultrasonic open successfully ");
   }
   return opened_;
 }
@@ -61,9 +59,9 @@ bool cyberdog::sensor::UltrasonicCarpo::Open()
 bool cyberdog::sensor::UltrasonicCarpo::Start()
 {
   if (opened_ == false) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic Start failed ");
+    INFO("ultrasonic Start failed ");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic Start successfully ");
+    INFO("ultrasonic Start successfully ");
   }  return opened_;
 }
 
@@ -71,14 +69,11 @@ bool cyberdog::sensor::UltrasonicCarpo::Stop()
 {
   std::this_thread::sleep_for(std::chrono::microseconds(3000000));
   if (opened_ == false) {
-    RCLCPP_INFO(
-      rclcpp::get_logger(
-        "cyberdog_ultrasonic"), "The ultrasonic sensor is not on, so the close fails");
+    INFO("The ultrasonic sensor is not on, so the close fails");
     return false;
   }
   ultrasonic_can_->Operate(
-    "enable_off", std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00});
+    "enable_off", std::vector<uint8_t>{});
   ultrasonic_can_->BREAK_VAR(ultrasonic_can_->GetData()->ultrasonic_data);
   ultrasonic_can_->BREAK_VAR(ultrasonic_can_->GetData()->ultrasonic_data_intensity);
   ultrasonic_can_->BREAK_VAR(ultrasonic_can_->GetData()->ultrasonic_data_clock);
@@ -86,11 +81,10 @@ bool cyberdog::sensor::UltrasonicCarpo::Stop()
   time_t time_closed_delay = time(nullptr);
   while (opened_ == true && difftime(time(nullptr), time_closed_delay) < 2.0f) {
     std::this_thread::sleep_for(std::chrono::microseconds(30000));
-    RCLCPP_INFO(
-      rclcpp::get_logger("cyberdog_ultrasonic"), "difftime = %2f ",
+    INFO("difftime = %2f ",
       difftime(time(nullptr), time_closed_delay));
   }
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic Closed successfully");
+  INFO("ultrasonic Closed successfully");
 
   return !opened_;
 }
@@ -98,12 +92,10 @@ bool cyberdog::sensor::UltrasonicCarpo::Stop()
 bool cyberdog::sensor::UltrasonicCarpo::Close()
 {
   if (opened_ == false) {
-    RCLCPP_INFO(
-      rclcpp::get_logger(
-        "cyberdog_ultrasonic"), "The ultrasonic sensor is not on, so the stop fails");
+    INFO("The ultrasonic sensor is not on, so the stop fails");
     return false;
   }
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "ultrasonic Stoped successfully");
+  INFO("ultrasonic Stoped successfully");
   return !opened_;
 }
 
@@ -113,7 +105,7 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
 {
   ultrasonic_data_ = data;
   if (name == "enable_on_ack") {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "got %s callback", name.c_str());
+    INFO("got %s callback", name.c_str());
     started_ = true;
     ultrasonic_can_->BREAK_VAR(ultrasonic_can_->GetData()->enable_on_ack);
     ultrasonic_can_->LINK_VAR(ultrasonic_can_->GetData()->ultrasonic_data);
@@ -121,12 +113,12 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
     ultrasonic_can_->LINK_VAR(ultrasonic_can_->GetData()->ultrasonic_data_clock);
 
   } else if (name == "ultrasonic_data") {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "got %s callback", name.c_str());
+    INFO("got %s callback", name.c_str());
     opened_ = true;
     std::string out_put("");
     std::cout << "ultrasonic_data   " << ultrasonic_data_->ultrasonic_data << std::endl;
   } else if (name == "ultrasonic_data_clock") {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "got %s callback", name.c_str());
+    INFO("got %s callback", name.c_str());
     opened_ = true;
     std::string out_put("");
     /*
@@ -135,13 +127,13 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
     std::cout<<"ultrasonic_data_intensity= "<<ultrasonic_data_->ultrasonic_data_intensity<<std::endl;
     */
   } else if (name == "ultrasonic_data_intensity") {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "got %s callback", name.c_str());
+    INFO("got %s callback", name.c_str());
     opened_ = true;
     std::string out_put("");
     std::cout << "ultrasonic_data_intensity= " << ultrasonic_data_->ultrasonic_data_intensity <<
       std::endl;
   } else if (name == "enable_off_ack") {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "got %s callback", name.c_str());
+    INFO("got %s callback", name.c_str());
     opened_ = false;
   }
   auto ultrasonic_payload = std::make_shared<sensor_msgs::msg::Range>();
@@ -158,7 +150,7 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
   if (payload_callback_ != nullptr) {
     payload_callback_(ultrasonic_payload);
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_ultrasonic"), "do not get payload_callback_");
+    INFO("do not get payload_callback_");
   }
 }
 

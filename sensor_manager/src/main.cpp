@@ -14,15 +14,20 @@
 #include <string>
 #include <memory>
 #include "sensor_manager/sensor_manager.hpp"
+#include "cyberdog_common/cyberdog_log.hpp"
+
 
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
+  LOGGER_MAIN_INSTANCE("sensor_manager");
+  INFO("sensor manager begin");
   auto sensor_manager =
     std::make_shared<cyberdog::sensor::SensorManager>(std::string("sensor_manager"));
   sensor_manager->Config();
+  INFO("sensor manager Config succeed");
   if (!sensor_manager->Init()) {
-    std::cout << "sensor manager init failed!\n";
+    INFO("sensor manager init failed!");
     return -1;
   }
   sensor_manager->Run();

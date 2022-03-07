@@ -20,6 +20,7 @@
 #include <string>
 #include "ultrasonic_base/ultrasonic_base.hpp"
 #include "embed_protocol/embed_protocol.hpp"
+#include "cyberdog_common/cyberdog_log.hpp"
 
 
 #define EVM cyberdog::embed
@@ -37,13 +38,16 @@ typedef struct _ultrasonic_can
   uint8_t enable_off_ack;
 } ultrasonic_can;
 
-class UltrasonicCarpo : public cyberdog::sensor::UltrasonicBase
+class UltrasonicCarpo : public cyberdog::sensor::UltrasonicBase,cyberdog::common::CyberdogLogger
 {
 public:
   bool Open() override;
   bool Start() override;
   bool Stop() override;
   bool Close() override;
+  explicit UltrasonicCarpo():cyberdog::common::CyberdogLogger(
+      "cyberdog_ultrasonic"
+  ){}
 
 private:
   void recv_callback(std::string & name, std::shared_ptr<ultrasonic_can> data);

@@ -17,7 +17,6 @@
   <depend>bream_vendor</depend>    
   <depend>cyberdog_ultrasonic</depend>
   <depend>cyberdog_tof</depend>
-
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
