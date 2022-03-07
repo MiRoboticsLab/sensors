@@ -25,6 +25,8 @@
 #include "bream_vendor/bream_callbacks.hpp"
 #include "bream_vendor/patch_downloader.h"
 #include "bream_vendor/bream_helper.h"
+#include "cyberdog_common/cyberdog_log.hpp"
+
 
 bcm_gps::GPS::GPS(PAYLOAD_callback PAYLOAD_cb, NMEA_callback NMEA_cb)
 {
@@ -48,7 +50,7 @@ bool bcm_gps::GPS::Open()
   if (opened_ || (ready_ == false && Init() == false)) {
     return opened_;
   }
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "GPS%d Opened", id_);
+  INFO("[cyberdog_gps]: GPS%d Opened", id_);
   opened_ = true;
   init_num_++;
   return true;
@@ -57,27 +59,27 @@ bool bcm_gps::GPS::Open()
 void bcm_gps::GPS::Start()
 {
   if (ready_ == false) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "GPS module not ready yet");
+    ERROR("[cyberdog_gps]: GPS module not ready yet");
     return;
   }
   if (start_) {return;}
   if (start_num_++ == 0) {
     BreamHelper::GetInstance().GnssStart();
     start_ = true;
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "GnssStart");
+    INFO("[cyberdog_gps]: GnssStart");
   }
 }
 
 void bcm_gps::GPS::Stop()
 {
   if (ready_ == false) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "GPS module not ready yet");
+    ERROR("[cyberdog_gps]: GPS module not ready yet");
     return;
   }
   if (start_ == false) {return;}
   start_ = false;
   if (--start_num_ == 0) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "GnssStop");
+    INFO("[cyberdog_gps]: GnssStop");
     BreamHelper::GetInstance().GnssStop();
   }
 }
@@ -89,7 +91,7 @@ void bcm_gps::GPS::Close()
   if (NMEA_callbacks_.count(id_) != 0) {NMEA_callbacks_.erase(id_);}
   if (PAYLOAD_callbacks_.count(id_) != 0) {PAYLOAD_callbacks_.erase(id_);}
   if (ready_ && opened_ && --init_num_ == 0) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "Last usage close, exit main thread");
+    INFO("[cyberdog_gps]: Last usage close, exit main thread");
     main_running_ = false;
     main_T_.join();
   }
@@ -118,7 +120,7 @@ void bcm_gps::GPS::SetCallback(NMEA_callback NMEA_cb)
   if (NMEA_callbacks_.count(id_) != 0) {NMEA_callbacks_.at(id_) = NMEA_cb;} else {
     NMEA_callbacks_.insert(std::map<int, NMEA_callback>::value_type(id_, NMEA_cb));
   }
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "GPS%dSuccess SetCallback NMEA", id_);
+  INFO("[cyberdog_gps]: GPS%dSuccess SetCallback NMEA", id_);
 }
 
 void bcm_gps::GPS::SetCallback(PAYLOAD_callback PAYLOAD_cb)
@@ -127,7 +129,7 @@ void bcm_gps::GPS::SetCallback(PAYLOAD_callback PAYLOAD_cb)
   if (PAYLOAD_callbacks_.count(id_) != 0) {PAYLOAD_callbacks_.at(id_) = PAYLOAD_cb;} else {
     PAYLOAD_callbacks_.insert(std::map<int, PAYLOAD_callback>::value_type(id_, PAYLOAD_cb));
   }
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "GPS%d Success SetCallback PAYLOAD", id_);
+  INFO("[cyberdog_gps]: GPS%d Success SetCallback PAYLOAD", id_);
 }
 
 void bcm_gps::GPS::SetL5Bias(uint32_t biasCm)
@@ -166,76 +168,70 @@ void SetSkip(std::string path)
       fseek(fp1, 0, 0);
       fwrite(tmp, sizeof(char), 40, fp1);
       fclose(fp1);
-      RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), ":Write file: %s", path.c_str());
+      INFO("[cyberdog_gps]: :Write file: %s", path.c_str());
       return;
     }
   } catch (...) {
   }
-  RCLCPP_ERROR(rclcpp::get_logger("cyberdog_gps"), "Cant write file");
+  ERROR("[cyberdog_gps]: Cant write file");
 }
 
 bool bcm_gps::GPS::Init()
 {
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "BCM_GPS Init");
+  INFO("[cyberdog_gps]: BCM_GPS Init");
   // change toml11vondor to cyberdog_common
   toml::value value;
   auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
   auto local_config_dir = local_share_dir + std::string("/toml_config/sensors/bcmgps_config.toml");
   if (access(local_config_dir.c_str(), F_OK) != 0) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "%s do not exist!", local_config_dir.c_str());
-    RCLCPP_INFO(
-      rclcpp::get_logger(
-        "cyberdog_gps"), "init failed");
+    ERROR("[cyberdog_gps]: %s do not exist!", local_config_dir.c_str());
+    ERROR("[cyberdog_gps]: init failed");
     return false;
   }
   if (!cyberdog::common::CyberdogToml::ParseFile(
       std::string(local_share_dir) +
       "/toml_config/sensors/bcmgps_config.toml", value))
   {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read data from toml");
+    ERROR("[cyberdog_gps]: fail to read data from toml");
   }
   bool skip_download;
   if (!cyberdog::common::CyberdogToml::Get(value, "skip_download", skip_download)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key skip_download from toml");
+    ERROR("[cyberdog_gps]: fail to read key skip_download from toml");
   }
   bool onlyfirst_download;
   if (!cyberdog::common::CyberdogToml::Get(value, "onlyfirst_download", onlyfirst_download)) {
-    RCLCPP_INFO(
-      rclcpp::get_logger("cyberdog_gps"),
-      "fail to read key onlyfirst_download from toml");
+    ERROR("[cyberdog_gps]: fail to read key onlyfirst_download from toml");
   }
   std::string tty_str;
   if (!cyberdog::common::CyberdogToml::Get(value, "tty", tty_str)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key tty from toml");
+    ERROR("[cyberdog_gps]: fail to read key tty from toml");
   }
   std::string patch_path;
   if (!cyberdog::common::CyberdogToml::Get(value, "patch_path", patch_path)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key patch_path from toml");
+    ERROR("[cyberdog_gps]: fail to read key patch_path from toml");
   }
 
   std::vector<uint8_t> infMsgMask_vec;
 
   if (!cyberdog::common::CyberdogToml::Get(value, "infMsgMask", infMsgMask_vec)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key infMsgMask from toml");
+    ERROR("[cyberdog_gps]: fail to read key infMsgMask from toml");
   }
   uint8_t PowerModePreset;
   if (!cyberdog::common::CyberdogToml::Get(value, "PowerModePreset", PowerModePreset)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key PowerModePreset from toml");
+    ERROR("[cyberdog_gps]: fail to read key PowerModePreset from toml");
   }
   std::vector<uint8_t> MsgRate_vec;
   if (!cyberdog::common::CyberdogToml::Get(value, "MsgRate", MsgRate_vec)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key MsgRate from toml");
+    ERROR("[cyberdog_gps]: fail to read key MsgRate from toml");
   }
   bool AckAiding;
   if (!cyberdog::common::CyberdogToml::Get(value, "AckAiding", AckAiding)) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "fail to read key AckAiding from toml");
+    ERROR("[cyberdog_gps]: fail to read key AckAiding from toml");
   }
 
   if (access(patch_path.c_str(), F_OK) != 0) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "%s do not exist!", patch_path.c_str());
-    RCLCPP_INFO(
-      rclcpp::get_logger(
-        "cyberdog_gps"), "init failed");
+    ERROR("[cyberdog_gps]: %s do not exist!", patch_path.c_str());
+    ERROR("[cyberdog_gps]: init failed");
     return false;
   }
 
@@ -247,7 +243,7 @@ bool bcm_gps::GPS::Init()
   std::string local_log_dir;
   local_log_dir = ament_index_cpp::get_package_share_directory("cyberdog_gps") + std::string(
     "/logs/");
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "Log path: %s", local_log_dir.c_str());
+  INFO("[cyberdog_gps]: Log path: %s", local_log_dir.c_str());
   LD2OS_openLog(local_log_dir);
   int portNumber = -1;
   const int baudrate = 3000000;
@@ -255,20 +251,20 @@ bool bcm_gps::GPS::Init()
   LoDi2SerialConnection connType = LODI2_SERIAL_UART;
 
   if (!skip_download) {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "Start load patch: %s", patch_path.c_str());
+    INFO("[cyberdog_gps]: Start load patch: %s", patch_path.c_str());
     // Open serial port
     LD2OS_open(connType, portNumber, baudrate, tty);
     // Download patch
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "down load patch: %s", patch_path.c_str());
+    INFO("[cyberdog_gps]: down load patch: %s", patch_path.c_str());
     if (false == Bream_LoadPatch(patch_path.c_str())) {
-      RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "Cant load patch: %s", patch_path.c_str());
+      INFO("[cyberdog_gps]: Cant load patch: %s", patch_path.c_str());
       ready_ = false;
       return false;
     }
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "Success load patch: %s", patch_path.c_str());
+    INFO("[cyberdog_gps]: Success load patch: %s", patch_path.c_str());
 
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "Skip load patch: %s", patch_path.c_str());
+    INFO("[cyberdog_gps]: Skip load patch: %s", patch_path.c_str());
   }
   if (onlyfirst_download == true && skip_download == false) {SetSkip(local_config_dir);}
 
@@ -292,7 +288,7 @@ bool bcm_gps::GPS::Init()
   }
 
   // Config GNSS
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "ConfigGNSS");
+  INFO("[cyberdog_gps]: ConfigGNSS");
   LD2_LOG("ConfigGNSS()\n");
   uint8_t infMsgMask[6];
   for (int a = 0; a < 6 && a < static_cast<int>(infMsgMask_vec.size()); a++) {
@@ -339,7 +335,7 @@ bool bcm_gps::GPS::Init()
 
   LD2_LOG("============================\n");
   LD2_LOG("Finish Config\n");
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "Finish Config");
+  INFO("[cyberdog_gps]: Finish Config");
 
   ready_ = true;
   return true;
@@ -347,7 +343,7 @@ bool bcm_gps::GPS::Init()
 
 void bcm_gps::GPS::MainThread()
 {
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "MainThread Start");
+  INFO("[cyberdog_gps]: MainThread Start");
   RegisterBreamCallbacks();
   main_running_ = true;
 
@@ -363,5 +359,5 @@ void bcm_gps::GPS::MainThread()
   ready_ = false;
   LD2OS_close();
   LD2OS_closeLog();
-  RCLCPP_INFO(rclcpp::get_logger("cyberdog_gps"), "MainThread Exit");
+  INFO("[cyberdog_gps]: MainThread Exit");
 }

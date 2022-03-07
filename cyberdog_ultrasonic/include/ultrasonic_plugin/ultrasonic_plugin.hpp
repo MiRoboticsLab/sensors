@@ -38,16 +38,16 @@ typedef struct _ultrasonic_can
   uint8_t enable_off_ack;
 } ultrasonic_can;
 
-class UltrasonicCarpo : public cyberdog::sensor::UltrasonicBase,cyberdog::common::CyberdogLogger
+class UltrasonicCarpo : public cyberdog::sensor::UltrasonicBase
 {
 public:
   bool Open() override;
   bool Start() override;
   bool Stop() override;
   bool Close() override;
-  explicit UltrasonicCarpo():cyberdog::common::CyberdogLogger(
-      "cyberdog_ultrasonic"
-  ){}
+  //explicit UltrasonicCarpo():cyberdog::common::CyberdogLogger(
+      //"cyberdog_ultrasonic"
+  //){}
 
 private:
   void recv_callback(std::string & name, std::shared_ptr<ultrasonic_can> data);
