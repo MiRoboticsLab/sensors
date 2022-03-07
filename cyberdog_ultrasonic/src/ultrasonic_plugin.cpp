@@ -30,7 +30,8 @@ bool cyberdog::sensor::UltrasonicCarpo::Open()
   auto path = local_share_dir + std::string("/toml_config/sensors/ultrasonic.toml");
   if (access(path.c_str(), F_OK) != 0) {
     FATAL("[cyberdog_ultrasonic]: %s do not exist!", path.c_str());
-    FATAL("[cyberdog_ultrasonic]: fail to start ultrasonic,started =   %d ",
+    FATAL(
+      "[cyberdog_ultrasonic]: fail to start ultrasonic,started =   %d ",
       static_cast<int>(opened_));
     return opened_;
   }
@@ -45,7 +46,8 @@ bool cyberdog::sensor::UltrasonicCarpo::Open()
   time_t time_opened_delay = time(nullptr);
   while (opened_ == false && difftime(time(nullptr), time_opened_delay) < 2.0f) {
     std::this_thread::sleep_for(std::chrono::microseconds(30000));
-    INFO("[cyberdog_ultrasonic]: difftime = %2f ",
+    INFO(
+      "[cyberdog_ultrasonic]: difftime = %2f ",
       difftime(time(nullptr), time_opened_delay));
   }
   if (opened_ == false) {
@@ -81,7 +83,8 @@ bool cyberdog::sensor::UltrasonicCarpo::Stop()
   time_t time_closed_delay = time(nullptr);
   while (opened_ == true && difftime(time(nullptr), time_closed_delay) < 2.0f) {
     std::this_thread::sleep_for(std::chrono::microseconds(30000));
-    INFO("[cyberdog_ultrasonic]: difftime = %2f ",
+    INFO(
+      "[cyberdog_ultrasonic]: difftime = %2f ",
       difftime(time(nullptr), time_closed_delay));
   }
   INFO("[cyberdog_ultrasonic]: ultrasonic Closed successfully");

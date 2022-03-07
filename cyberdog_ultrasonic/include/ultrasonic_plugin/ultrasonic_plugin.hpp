@@ -45,9 +45,9 @@ public:
   bool Start() override;
   bool Stop() override;
   bool Close() override;
-  //explicit UltrasonicCarpo():cyberdog::common::CyberdogLogger(
-      //"cyberdog_ultrasonic"
-  //){}
+  // explicit UltrasonicCarpo():cyberdog::common::CyberdogLogger(
+  // "cyberdog_ultrasonic"
+  // ){}
 
 private:
   void recv_callback(std::string & name, std::shared_ptr<ultrasonic_can> data);
