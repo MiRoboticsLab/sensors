@@ -1,0 +1,5 @@
+<library path="cyberdog_lidar">
+  <class type="cyberdog::sensor::YdlidarCarpo" base_class_type="cyberdog::sensor::LidarBase">
+    <description>This is a ydlidar plugin.</description>
+  </class>
+</library>
