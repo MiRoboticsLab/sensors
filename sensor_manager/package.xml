@@ -14,6 +14,7 @@
   <depend>manager_base</depend>
   <depend>pluginlib</depend>
   <depend>cyberdog_gps</depend>
+  <depend>cyberdog_lidar</depend>
   <depend>bream_vendor</depend>    
   <depend>cyberdog_ultrasonic</depend>
   <depend>cyberdog_tof</depend>
