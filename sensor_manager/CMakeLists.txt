@@ -20,6 +20,7 @@ find_package(protocol REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(cyberdog_system REQUIRED)
 find_package(cyberdog_gps REQUIRED)
+find_package(cyberdog_lidar REQUIRED)
 find_package(bream_vendor REQUIRED)
 find_package(cyberdog_ultrasonic REQUIRED)
 find_package(cyberdog_common REQUIRED)
@@ -52,6 +53,7 @@ ament_target_dependencies(${PROJECT_NAME}
   cyberdog_system
   pluginlib
   cyberdog_gps
+  cyberdog_lidar
   cyberdog_ultrasonic
   cyberdog_tof)
 
