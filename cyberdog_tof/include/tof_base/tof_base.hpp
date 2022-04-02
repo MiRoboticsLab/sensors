@@ -17,8 +17,8 @@
 
 #include <memory>
 #include <functional>
-#include "protocol/msg/tof.hpp"
-#include "protocol/msg/multiple_tof.hpp"
+#include "protocol/msg/single_tof_payload.hpp"
+#include "protocol/msg/multiple_tof_payload.hpp"
 
 
 namespace cyberdog
@@ -36,13 +36,13 @@ public:
   virtual ~TofBase() {}
   void SetPayloadCallback(
     std::function<void(
-      std::shared_ptr<protocol::msg::MultipleTof> payload)> cb)
+      std::shared_ptr<protocol::msg::MultipleTofPayload> payload)> cb)
   {
     payload_callback_ = cb;
   }
 
 protected:
-  std::function<void(std::shared_ptr<protocol::msg::MultipleTof> payload)> payload_callback_;
+  std::function<void(std::shared_ptr<protocol::msg::MultipleTofPayload> payload)> payload_callback_;
   TofBase() {}
 };  // class TofBase
 }  // namespace sensor

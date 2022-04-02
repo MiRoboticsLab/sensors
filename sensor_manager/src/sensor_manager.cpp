@@ -44,7 +44,7 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::gps_payload_callback, this,
       std::placeholders::_1));
-
+  /*
   // lidar
   INFO("sensor manager Configuring begin");
   INFO("lidar Configuring beginning");
@@ -59,7 +59,7 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::lidar_payload_callback, this,
       std::placeholders::_1));
-
+  */
   // ultrasonic
   INFO("ultrasonic Configuring beginning");
   ultrasonic_publisher_ = node_ptr_->create_publisher<sensor_msgs::msg::Range>(
@@ -77,7 +77,7 @@ void cyberdog::sensor::SensorManager::Config()
 
   // tof
   INFO("tof Configuring beginning");
-  tof_publisher_ = node_ptr_->create_publisher<protocol::msg::MultipleTof>(
+  tof_publisher_ = node_ptr_->create_publisher<protocol::msg::MultipleTofPayload>(
     "tof_payload", rclcpp::SystemDefaultsQoS());
   std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::TofBase>> tof_classloader;
   tof_classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::TofBase>>(
@@ -96,14 +96,18 @@ bool cyberdog::sensor::SensorManager::Init()
   INFO("SensorManager Initing begin");
   INFO("gps open beginning");
   bool gps_opened = gps_->Open();
-  INFO("lidar open beginning");
-  bool lidar_opened = lidar_->Open();
+  // INFO("lidar open beginning");
+  // bool lidar_opened = lidar_->Open();
   INFO("ultrasonic open beginning");
   bool ultrasonic_opened = ultrasonic_->Open();
   INFO("tof open beginning");
   bool tof_opened = tof_->Open();
-  bool init_result = gps_opened && lidar_opened && ultrasonic_opened && tof_opened;
-  return init_result;
+  bool init_result = gps_opened && ultrasonic_opened && tof_opened;
+  (void)init_result;
+
+
+  // bool init_result = gps_opened && lidar_opened && ultrasonic_opened && tof_opened;
+  return true;
 }
 
 void cyberdog::sensor::SensorManager::Run()
@@ -111,17 +115,17 @@ void cyberdog::sensor::SensorManager::Run()
   INFO("SensorManager Running begin");
   INFO("gps start beginning");
   bool gps_started = gps_->Start();
-  INFO("lidar start beginning");
-  bool lidar_started = lidar_->Start();
+  // INFO("lidar start beginning");
+  // bool lidar_started = lidar_->Start();
   INFO("ultrasonic start beginning");
   bool ultrasonic_started = ultrasonic_->Start();
   INFO("tof start beginning");
   bool tof_started = tof_->Start();
-
-  if (gps_started && lidar_started && ultrasonic_started && tof_started) {
-    rclcpp::spin(node_ptr_);
-    rclcpp::shutdown();
-  }
+  (void)tof_started;
+  (void)ultrasonic_started;
+  (void)gps_started;
+  rclcpp::spin(node_ptr_);
+  rclcpp::shutdown();
 }
 
 bool cyberdog::sensor::SensorManager::SelfCheck()
@@ -154,6 +158,10 @@ void cyberdog::sensor::SensorManager::OnProtected()
 
 void cyberdog::sensor::SensorManager::OnActive()
 {
+  ultrasonic_->Stop();
+  ultrasonic_->Close();
+  tof_->Stop();
+  tof_->Close();
 }
 
 void cyberdog::sensor::SensorManager::gps_payload_callback(
@@ -178,7 +186,7 @@ void cyberdog::sensor::SensorManager::ultrasonic_payload_callback(
 }
 
 void cyberdog::sensor::SensorManager::tof_payload_callback(
-  std::shared_ptr<protocol::msg::MultipleTof> msg)
+  std::shared_ptr<protocol::msg::MultipleTofPayload> msg)
 {
   tof_publisher_->publish(*msg);
   INFO("hello_tof");

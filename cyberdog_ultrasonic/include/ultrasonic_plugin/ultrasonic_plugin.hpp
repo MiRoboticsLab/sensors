@@ -51,12 +51,17 @@ public:
 
 private:
   void recv_callback(std::string & name, std::shared_ptr<ultrasonic_can> data);
+  void ultrasonic_pub_callback();
 
 private:
   std::shared_ptr<EVM::Protocol<ultrasonic_can>> ultrasonic_can_;
   std::shared_ptr<ultrasonic_can> ultrasonic_data_;
+  std::shared_ptr<sensor_msgs::msg::Range> ultrasonic_payload;
   bool opened_ = false;
   bool started_ = false;
+  std::mutex mtx;
+  std::thread ultrasonic_pub_thread;
+  LOGGER_MINOR_INSTANCE("cyberdog_ultrasonic");
 };  // class UltrasonicCarpo
 }  // namespace sensor
 }  // namespace cyberdog

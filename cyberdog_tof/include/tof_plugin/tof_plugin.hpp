@@ -19,6 +19,7 @@
 #include <string>
 #include "tof_base/tof_base.hpp"
 #include "embed_protocol/embed_protocol.hpp"
+#include "cyberdog_common/cyberdog_log.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #define EVM cyberdog::embed
@@ -47,6 +48,7 @@ public:
 private:
   bool SingleOpen(uint8_t serial_number);
   bool SingleStop(uint8_t serial_number);
+  bool SingleStart(uint8_t serial_number);
   void tof_pub_callback();
   void left_front_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
   void left_back_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
@@ -54,12 +56,14 @@ private:
   void right_back_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
 
 private:
-  std::shared_ptr<protocol::msg::MultipleTof> multiple_tof_payload;
+  std::shared_ptr<protocol::msg::MultipleTofPayload> multiple_tof_payload;
   std::thread tof_pub_thread;
 
 
   bool opened_;
+  bool started_;
   bool closed_;
+  bool stopped_;
 
 
   std::shared_ptr<EVM::Protocol<tof_can>> tof_can_left_front;
@@ -81,6 +85,7 @@ private:
   std::shared_ptr<tof_can> tof_data_right_back;
   bool tof_opened_right_back = false;
   bool tof_started_right_back = false;
+  LOGGER_MINOR_INSTANCE("cyberdog_tof");
 };  // class TofCarpo
 }  // namespace sensor
 }  // namespace cyberdog
