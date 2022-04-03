@@ -27,8 +27,8 @@
 #include "manager_base/manager_base.hpp"
 #include "ultrasonic_base/ultrasonic_base.hpp"
 #include "tof_base/tof_base.hpp"
-#include "protocol/msg/tof.hpp"
-#include "protocol/msg/multiple_tof.hpp"
+#include "protocol/msg/single_tof_payload.hpp"
+#include "protocol/msg/multiple_tof_payload.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 
@@ -63,7 +63,7 @@ private:
   void gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg);
   void lidar_payload_callback(std::shared_ptr<sensor_msgs::msg::LaserScan> msg);
   void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
-  void tof_payload_callback(std::shared_ptr<protocol::msg::MultipleTof> msg);
+  void tof_payload_callback(std::shared_ptr<protocol::msg::MultipleTofPayload> msg);
 
 private:
   std::shared_ptr<cyberdog::sensor::GpsBase> gps_;
@@ -75,7 +75,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr ultrasonic_publisher_;
 
   std::shared_ptr<cyberdog::sensor::TofBase> tof_;
-  rclcpp::Publisher<protocol::msg::MultipleTof>::SharedPtr tof_publisher_;
+  rclcpp::Publisher<protocol::msg::MultipleTofPayload>::SharedPtr tof_publisher_;
 };  // class SensorManager
 }  // namespace sensor
 }  // namespace cyberdog

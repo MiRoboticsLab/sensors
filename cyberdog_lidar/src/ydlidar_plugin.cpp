@@ -85,7 +85,7 @@ bool cyberdog::sensor::YdlidarCarpo::Open()
 
   bool bool_optvalue;
   bool_optvalue = false;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "fixed_resolution");
+  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "resolution_fixed");
   this->lidar_ptr_->setlidaropt(LidarPropFixedResolution, &bool_optvalue, sizeof(bool));
 
   bool_optvalue = true;

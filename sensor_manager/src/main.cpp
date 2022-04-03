@@ -31,5 +31,6 @@ int main(int argc, char ** argv)
     return -1;
   }
   sensor_manager->Run();
+  // sensor_manager->OnActive();
   return 0;
 }
