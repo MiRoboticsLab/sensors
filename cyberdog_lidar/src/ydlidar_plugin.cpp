@@ -18,11 +18,12 @@
 #include "rclcpp/rclcpp.hpp"
 #include "lidar_plugin/ydlidar_plugin.hpp"
 
-bool cyberdog::sensor::YdlidarCarpo::Open()
+bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
 {
-  INFO("Open ydlidar ...");
-  this->lidar_ptr_ = std::make_shared<CYdLidar>();
-  this->scan_ptr_ = std::make_shared<ScanMsg>();
+  this->state_msg_.insert({SwitchState::open, "Open"});
+  this->state_msg_.insert({SwitchState::start, "Start"});
+  this->state_msg_.insert({SwitchState::stop, "Stop"});
+  this->state_msg_.insert({SwitchState::close, "Close"});
 
   std::string lidar_config_dir = ament_index_cpp::get_package_share_directory("params") +
     "/toml_config/sensors/lidar.toml";
@@ -49,9 +50,58 @@ bool cyberdog::sensor::YdlidarCarpo::Open()
     return false;
   }
 
+  this->frequency_ = 10.f;
+  this->frequency_ = toml::find<float>(this->params_toml_, "dylidar", "frequency");
+
+  this->scan_ptr_ = std::make_shared<ScanMsg>();
   this->scan_ptr_->header.frame_id = "laser_frame";
   this->scan_ptr_->header.frame_id = toml::find<std::string>(
     this->params_toml_, "dylidar", "frame_id");
+
+  if (!simulator) {
+    this->Open = std::bind(&cyberdog::sensor::YdlidarCarpo::Open_, this);
+    this->Start = std::bind(&cyberdog::sensor::YdlidarCarpo::Start_, this);
+    this->Stop = std::bind(&cyberdog::sensor::YdlidarCarpo::Stop_, this);
+    this->Close = std::bind(&cyberdog::sensor::YdlidarCarpo::Close_, this);
+  } else {
+    auto Simulator = [this](SwitchState now_state) -> bool {
+        INFO("%s ydlidar ...", this->state_msg_[now_state].c_str());
+        switch (now_state) {
+          case SwitchState::open:
+          case SwitchState::stop:
+            break;
+          case SwitchState::start:
+            this->update_data_thread_ptr_ = std::make_shared<std::thread>(
+              std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateSimulationData, this));
+            break;
+          case SwitchState::close:
+            if ((this->update_data_thread_ptr_ != nullptr) &&
+              this->update_data_thread_ptr_->joinable())
+            {
+              this->update_data_thread_ptr_->join();
+            }
+            break;
+          default:
+            WARN("Ydlidar not recognized state");
+            break;
+        }
+
+        this->sensor_state_ = now_state;
+        INFO("ydlidar %s ok", this->state_msg_[now_state].c_str());
+        return true;
+      };
+    this->Open = std::bind(Simulator, SwitchState::open);
+    this->Start = std::bind(Simulator, SwitchState::start);
+    this->Stop = std::bind(Simulator, SwitchState::stop);
+    this->Close = std::bind(Simulator, SwitchState::close);
+  }
+  return true;
+}
+
+bool cyberdog::sensor::YdlidarCarpo::Open_()
+{
+  INFO("%s ydlidar ...", this->state_msg_[SwitchState::open].c_str());
+  this->lidar_ptr_ = std::make_shared<CYdLidar>();
 
   std::string str_optvalue;
   str_optvalue = "/dev/ydlidar";
@@ -129,61 +179,70 @@ bool cyberdog::sensor::YdlidarCarpo::Open()
   float_optvalue = toml::find<float>(this->params_toml_, "dylidar", "range_min");
   this->lidar_ptr_->setlidaropt(LidarPropMinRange, &float_optvalue, sizeof(float));
 
-  this->frequency_ = 10.f;
-  this->frequency_ = toml::find<float>(this->params_toml_, "dylidar", "frequency");
   this->lidar_ptr_->setlidaropt(LidarPropScanFrequency, &this->frequency_, sizeof(float));
 
   if (!this->lidar_ptr_->initialize()) {
-    ERROR("ydlidar initialize failed:%s", this->lidar_ptr_->DescribeError());
+    ERROR(
+      "Ydlidar %s failed:%s",
+      this->state_msg_[SwitchState::open].c_str(), this->lidar_ptr_->DescribeError());
     return false;
   }
   this->sensor_state_ = SwitchState::open;
-  INFO("ydlidar initialize ok");
+  INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return true;
 }
 
-bool cyberdog::sensor::YdlidarCarpo::Start()
+bool cyberdog::sensor::YdlidarCarpo::Start_()
 {
-  INFO("Start ydlidar ...");
+  INFO("%s ydlidar ...", this->state_msg_[SwitchState::start].c_str());
 
-  if (this->sensor_state_ == SwitchState::close) {
-    ERROR("ydlidar is close, unable to start");
+  if ((this->sensor_state_ == SwitchState::close) && (!this->Open_())) {
+    ERROR(
+      "Ydlidar is %s, try open failed, unable to start",
+      this->state_msg_[this->sensor_state_].c_str());
     return false;
   }
 
   if (this->lidar_ptr_->turnOn()) {
-    ERROR("ydlidar turnOn failed:%s", this->lidar_ptr_->DescribeError());
+    ERROR("Ydlidar turnOn failed:%s", this->lidar_ptr_->DescribeError());
     return false;
   }
 
-  if (this->sensor_state_ == SwitchState::open) {
-    this->scan_ptr_ = std::make_shared<ScanMsg>();
-    this->update_data_thread_ptr_ = std::make_shared<std::thread>(
-      std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateData, this));
-  }
+  this->scan_ptr_ = std::make_shared<ScanMsg>();
+  this->update_data_thread_ptr_ = std::make_shared<std::thread>(
+    std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateData, this));
 
   this->sensor_state_ = SwitchState::start;
-  INFO("ydlidar Start ok");
+  INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return true;
 }
 
-bool cyberdog::sensor::YdlidarCarpo::Stop()
+bool cyberdog::sensor::YdlidarCarpo::Stop_()
 {
-  INFO("Stop");
+  INFO("%s ydlidar ...", this->state_msg_[SwitchState::stop].c_str());
+
+  this->lidar_ptr_->turnOff();
+
   this->sensor_state_ = SwitchState::stop;
-  this->lidar_ptr_->turnOff();
+  INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return true;
 }
 
-bool cyberdog::sensor::YdlidarCarpo::Close()
+bool cyberdog::sensor::YdlidarCarpo::Close_()
 {
-  INFO("Close");
-  this->sensor_state_ = SwitchState::close;
-  this->lidar_ptr_->turnOff();
-  this->lidar_ptr_->disconnecting();
-  if (this->update_data_thread_ptr_->joinable()) {
+  INFO("%s ydlidar ...", this->state_msg_[SwitchState::close].c_str());
+  if (this->lidar_ptr_ != nullptr) {
+    this->lidar_ptr_->turnOff();
+    this->lidar_ptr_->disconnecting();
+  }
+  if ((this->update_data_thread_ptr_ != nullptr) &&
+    this->update_data_thread_ptr_->joinable())
+  {
     this->update_data_thread_ptr_->join();
   }
+
+  this->sensor_state_ = SwitchState::close;
+  INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return true;
 }
 
@@ -191,6 +250,13 @@ void cyberdog::sensor::YdlidarCarpo::UpdateData()
 {
   int sleep_time = static_cast<int>(1000 / this->frequency_);
   while (true) {
+    if (!rclcpp::ok()) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+    if (this->sensor_state_ != SwitchState::start) {
+      continue;
+    }
     if (this->lidar_ptr_->doProcessSimple(this->scan_sdk)) {
       this->scan_ptr_->header.stamp.sec = RCL_NS_TO_S(this->scan_sdk.stamp);
       this->scan_ptr_->header.stamp.nanosec = this->scan_sdk.stamp -
@@ -217,11 +283,22 @@ void cyberdog::sensor::YdlidarCarpo::UpdateData()
       }
       this->payload_callback_(this->scan_ptr_);
     }
+  }
+}
 
+void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
+{
+  int sleep_time = static_cast<int>(1000 / this->frequency_);
+  while (true) {
     if (!rclcpp::ok()) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+    if (this->sensor_state_ != SwitchState::start) {
+      continue;
+    }
+    this->scan_ptr_->header.stamp = rclcpp::Clock(RCL_SYSTEM_TIME).now();
+    this->payload_callback_(this->scan_ptr_);
   }
 }
 

@@ -38,6 +38,8 @@ namespace sensor
 {
 class SensorManager final : public manager::ManagerBase
 {
+  using ScanMsg = sensor_msgs::msg::LaserScan;                        // [topic 类型]激光数据
+
 public:
   explicit SensorManager(const std::string & name);
   ~SensorManager();
@@ -61,7 +63,7 @@ private:
   std::string name_;
   rclcpp::Node::SharedPtr node_ptr_ {nullptr};
   void gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg);
-  void lidar_payload_callback(std::shared_ptr<sensor_msgs::msg::LaserScan> msg);
+  void lidar_payload_callback(std::shared_ptr<ScanMsg> msg);
   void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
   void tof_payload_callback(std::shared_ptr<protocol::msg::MultipleTofPayload> msg);
 
@@ -69,7 +71,7 @@ private:
   std::shared_ptr<cyberdog::sensor::GpsBase> gps_;
   std::shared_ptr<cyberdog::sensor::LidarBase> lidar_;
   rclcpp::Publisher<protocol::msg::GpsPayload>::SharedPtr gps_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr lidar_publisher_;
+  rclcpp::Publisher<ScanMsg>::SharedPtr lidar_publisher_;
 
   std::shared_ptr<cyberdog::sensor::UltrasonicBase> ultrasonic_;
   rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr ultrasonic_publisher_;
