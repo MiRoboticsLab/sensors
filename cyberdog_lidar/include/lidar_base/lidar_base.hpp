@@ -27,10 +27,8 @@ namespace sensor
 class LidarBase
 {
 public:
-  virtual bool Open() = 0;
-  virtual bool Start() = 0;
-  virtual bool Stop() = 0;
-  virtual bool Close() = 0;
+  virtual bool Init(bool simulator = false) = 0;
+  std::function<bool()> Open, Start, Stop, Close;
   virtual ~LidarBase() {}
   void SetPayloadCallback(
     std::function<void(
@@ -40,6 +38,10 @@ public:
   }
 
 protected:
+  virtual bool Open_() = 0;
+  virtual bool Start_() = 0;
+  virtual bool Stop_() = 0;
+  virtual bool Close_() = 0;
   std::function<void(std::shared_ptr<sensor_msgs::msg::LaserScan> payload)> payload_callback_;
   LidarBase() {}
 };  // class LidarBase

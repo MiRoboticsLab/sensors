@@ -17,6 +17,8 @@
 
 #include <memory>
 #include <thread>
+#include <string>
+#include <map>
 #include "src/CYdLidar.h"
 #include "cyberdog_common/cyberdog_log.hpp"
 #include "cyberdog_common/cyberdog_toml.hpp"
@@ -29,24 +31,30 @@ namespace sensor
 {
 class YdlidarCarpo : public cyberdog::sensor::LidarBase
 {
-  using ScanMsg = sensor_msgs::msg::LaserScan;                        // [topic 类型]激光数据
   using SwitchState = enum {open = 0, start, stop, close, };          // [类型]切换状态
+  using ScanMsg = sensor_msgs::msg::LaserScan;                        // [topic 类型]激光数据
 
 public:
-  bool Open() override;
-  bool Start() override;
-  bool Stop() override;
-  bool Close() override;
+  bool Init(bool simulator = false) override;
 
 private:
   toml::value params_toml_;                                           // 参数
   float frequency_;                                                   // 频率
   LaserScan scan_sdk;                                                 // 激光数据
+  std::map<SwitchState, std::string> state_msg_;                      // 状态消息
   std::atomic<SwitchState> sensor_state_ {SwitchState::close};        // node 状态
   std::shared_ptr<std::thread> update_data_thread_ptr_ {nullptr};     // 更新数据线程
   std::shared_ptr<CYdLidar> lidar_ptr_ {nullptr};                     // SDK雷达对象
   std::shared_ptr<ScanMsg> scan_ptr_ {nullptr};                       // 激光数据
+
+private:
+  bool Open_() override;
+  bool Start_() override;
+  bool Stop_() override;
+  bool Close_() override;
   void UpdateData();                                                  // 更新数据
+  void UpdateSimulationData();                                        // 更新模拟数据
+
   LOGGER_MINOR_INSTANCE("Ydlidar");
 };  // class LidarCarpo
 }  // namespace sensor

@@ -44,11 +44,11 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::gps_payload_callback, this,
       std::placeholders::_1));
-  /*
+
   // lidar
   INFO("sensor manager Configuring begin");
   INFO("lidar Configuring beginning");
-  lidar_publisher_ = node_ptr_->create_publisher<sensor_msgs::msg::LaserScan>(
+  lidar_publisher_ = node_ptr_->create_publisher<ScanMsg>(
     "scan",
     rclcpp::SystemDefaultsQoS());
   std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::LidarBase>> lidar_classloader;
@@ -59,7 +59,7 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::lidar_payload_callback, this,
       std::placeholders::_1));
-  */
+
   // ultrasonic
   INFO("ultrasonic Configuring beginning");
   ultrasonic_publisher_ = node_ptr_->create_publisher<sensor_msgs::msg::Range>(
@@ -172,7 +172,7 @@ void cyberdog::sensor::SensorManager::gps_payload_callback(
 }
 
 void cyberdog::sensor::SensorManager::lidar_payload_callback(
-  std::shared_ptr<sensor_msgs::msg::LaserScan> msg)
+  std::shared_ptr<ScanMsg> msg)
 {
   lidar_publisher_->publish(*msg);
   INFO("hello_lidar");
