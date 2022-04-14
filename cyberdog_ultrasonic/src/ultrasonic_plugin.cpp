@@ -25,8 +25,6 @@
 #include "cyberdog_common/cyberdog_log.hpp"
 
 
-
-
 bool cyberdog::sensor::UltrasonicCarpo::Init(bool simulator)
 {
   this->state_msg_.insert({SwitchState::open, "Open"});
@@ -47,11 +45,15 @@ bool cyberdog::sensor::UltrasonicCarpo::Init(bool simulator)
           case SwitchState::stop:
             break;
           case SwitchState::start:
+            ultrasonic_payload = std::make_shared<sensor_msgs::msg::Range>();
             ultrasonic_pub_thread_simulator =
-              std::thread(std::bind(&cyberdog::sensor::UltrasonicCarpo::UpdateSimulationData, this));
+              std::thread(
+              std::bind(
+                &cyberdog::sensor::UltrasonicCarpo::UpdateSimulationData,
+                this));
             break;
           case SwitchState::close:
-            if ((&ultrasonic_pub_thread_simulator!= nullptr) &&
+            if ((&ultrasonic_pub_thread_simulator != nullptr) &&
               ultrasonic_pub_thread_simulator.joinable())
             {
               ultrasonic_pub_thread_simulator.join();
@@ -227,6 +229,31 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
   ultrasonic_payload->field_of_view = 15.0f;
   ultrasonic_payload->range = ultrasonic_data_->ultrasonic_data * 0.001f;
   mtx.unlock();
+}
+
+void cyberdog::sensor::UltrasonicCarpo::UpdateSimulationData()
+{
+  while (true) {
+    if (!rclcpp::ok()) {
+      INFO("[cyberdog_ultrasonic]: !rclcpp::ok()");
+      break;
+    }
+    INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+
+    struct timespec time_stu;
+    clock_gettime(CLOCK_REALTIME, &time_stu);
+    ultrasonic_payload->header.frame_id = std::string("ultrasonic");
+    ultrasonic_payload->header.stamp.nanosec = time_stu.tv_nsec;
+    ultrasonic_payload->header.stamp.sec = time_stu.tv_sec;
+    ultrasonic_payload->radiation_type = sensor_msgs::msg::Range::ULTRASOUND;
+    ultrasonic_payload->min_range = 0.1f;
+    ultrasonic_payload->max_range = 1.0f;
+    ultrasonic_payload->field_of_view = 15.0f;
+    ultrasonic_payload->range = 0.001f;
+    payload_callback_(ultrasonic_payload);
+    INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
+  }
 }
 
 PLUGINLIB_EXPORT_CLASS(cyberdog::sensor::UltrasonicCarpo, cyberdog::sensor::UltrasonicBase)

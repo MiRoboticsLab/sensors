@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 #include "ultrasonic_base/ultrasonic_base.hpp"
 #include "embed_protocol/embed_protocol.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
@@ -41,6 +42,7 @@ typedef struct _ultrasonic_can
 class UltrasonicCarpo : public cyberdog::sensor::UltrasonicBase
 {
   using SwitchState = enum {open = 0, start, stop, close, };          // [类型]切换状态
+
 public:
   bool Init(bool simulator = false) override;
   bool Open_() override;

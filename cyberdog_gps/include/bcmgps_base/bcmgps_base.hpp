@@ -38,10 +38,12 @@ public:
 class GpsBase
 {
 public:
-  virtual bool Open() = 0;
-  virtual bool Start() = 0;
-  virtual bool Stop() = 0;
-  virtual bool Close() = 0;
+  virtual bool Init(bool simulator = false) = 0;
+  std::function<bool()> Open, Start, Stop, Close;
+  virtual bool Open_() = 0;
+  virtual bool Start_() = 0;
+  virtual bool Stop_() = 0;
+  virtual bool Close_() = 0;
   virtual ~GpsBase() {}
   void SetPayloadCallback(
     std::function<void(
