@@ -25,7 +25,55 @@
 #include "cyberdog_common/cyberdog_log.hpp"
 
 
-bool cyberdog::sensor::UltrasonicCarpo::Open()
+
+
+bool cyberdog::sensor::UltrasonicCarpo::Init(bool simulator)
+{
+  this->state_msg_.insert({SwitchState::open, "Open"});
+  this->state_msg_.insert({SwitchState::start, "Start"});
+  this->state_msg_.insert({SwitchState::stop, "Stop"});
+  this->state_msg_.insert({SwitchState::close, "Close"});
+
+  if (!simulator) {
+    this->Open = std::bind(&cyberdog::sensor::UltrasonicCarpo::Open_, this);
+    this->Start = std::bind(&cyberdog::sensor::UltrasonicCarpo::Start_, this);
+    this->Stop = std::bind(&cyberdog::sensor::UltrasonicCarpo::Stop_, this);
+    this->Close = std::bind(&cyberdog::sensor::UltrasonicCarpo::Close_, this);
+  } else {
+    auto Simulator = [this](SwitchState now_state) -> bool {
+        INFO("%s Ultrasonic ...", this->state_msg_[now_state].c_str());
+        switch (now_state) {
+          case SwitchState::open:
+          case SwitchState::stop:
+            break;
+          case SwitchState::start:
+            ultrasonic_pub_thread_simulator =
+              std::thread(std::bind(&cyberdog::sensor::UltrasonicCarpo::UpdateSimulationData, this));
+            break;
+          case SwitchState::close:
+            if ((&ultrasonic_pub_thread_simulator!= nullptr) &&
+              ultrasonic_pub_thread_simulator.joinable())
+            {
+              ultrasonic_pub_thread_simulator.join();
+            }
+            break;
+          default:
+            WARN("Ultrasonic not recognized state");
+            break;
+        }
+
+        INFO("Ultrasonic %s ok", this->state_msg_[now_state].c_str());
+        return true;
+      };
+    this->Open = std::bind(Simulator, SwitchState::open);
+    this->Start = std::bind(Simulator, SwitchState::start);
+    this->Stop = std::bind(Simulator, SwitchState::stop);
+    this->Close = std::bind(Simulator, SwitchState::close);
+  }
+  return true;
+}
+
+bool cyberdog::sensor::UltrasonicCarpo::Open_()
 {
   ultrasonic_payload = std::make_shared<sensor_msgs::msg::Range>();
   opened_ = false;
@@ -61,7 +109,7 @@ bool cyberdog::sensor::UltrasonicCarpo::Open()
   return opened_;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::Start()
+bool cyberdog::sensor::UltrasonicCarpo::Start_()
 {
   time_t time_started_delay = time(nullptr);
   while (started_ == false && difftime(time(nullptr), time_started_delay) < 2.0f) {
@@ -80,7 +128,7 @@ bool cyberdog::sensor::UltrasonicCarpo::Start()
   return started_;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::Stop()
+bool cyberdog::sensor::UltrasonicCarpo::Stop_()
 {
   std::this_thread::sleep_for(std::chrono::microseconds(10000000));
   if (opened_ == false || started_ == false) {
@@ -108,7 +156,7 @@ bool cyberdog::sensor::UltrasonicCarpo::Stop()
   return !started_;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::Close()
+bool cyberdog::sensor::UltrasonicCarpo::Close_()
 {
   if (opened_ == true) {
     ERROR("[cyberdog_ultrasonic]: The ultrasonic stop fails");

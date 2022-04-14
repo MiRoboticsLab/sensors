@@ -99,6 +99,7 @@ bool cyberdog::sensor::SensorManager::Init()
   // INFO("lidar open beginning");
   // bool lidar_opened = lidar_->Open();
   INFO("ultrasonic open beginning");
+  bool init_ultrasonic = ultrasonic_->Init(true);
   bool ultrasonic_opened = ultrasonic_->Open();
   INFO("tof open beginning");
   bool tof_opened = tof_->Open();
