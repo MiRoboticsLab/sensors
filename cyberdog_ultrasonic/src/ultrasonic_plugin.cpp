@@ -181,10 +181,10 @@ void cyberdog::sensor::UltrasonicCarpo::ultrasonic_pub_callback()
     std::this_thread::sleep_for(std::chrono::microseconds(100000));
     if (payload_callback_ != nullptr && ultrasonic_payload != nullptr && publish_ok == true) {
       payload_callback_(ultrasonic_payload);
-      INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
+      // INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
       // started_ = false;
     } else {
-      ERROR("[cyberdog_ultrasonic]: publish ultrasonic payload failed");
+      // ERROR("[cyberdog_ultrasonic]: publish ultrasonic payload failed");
     }
   }
 }
@@ -235,10 +235,10 @@ void cyberdog::sensor::UltrasonicCarpo::UpdateSimulationData()
 {
   while (true) {
     if (!rclcpp::ok()) {
-      INFO("[cyberdog_ultrasonic]: !rclcpp::ok()");
+      WARN("[cyberdog_ultrasonic]: !rclcpp::ok()");
       break;
     }
-    INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
+    // INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
     std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
     struct timespec time_stu;
@@ -252,7 +252,7 @@ void cyberdog::sensor::UltrasonicCarpo::UpdateSimulationData()
     ultrasonic_payload->field_of_view = 15.0f;
     ultrasonic_payload->range = 0.001f;
     payload_callback_(ultrasonic_payload);
-    INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
+    // INFO("[cyberdog_ultrasonic]: publish ultrasonic payload succeed");
   }
 }
 

@@ -119,10 +119,10 @@ void cyberdog::sensor::GpsCarpo::UpdateSimulationData()
   auto cyberdog_payload = std::make_shared<protocol::msg::GpsPayload>();
   while (true) {
     if (!rclcpp::ok()) {
-      INFO("[cyberdog_gps]: !rclcpp::ok()");
+      WARN("[cyberdog_gps]: !rclcpp::ok()");
       break;
     }
-    INFO("[cyberdog_gps]: publish gps payload succeed");
+    // INFO("[cyberdog_gps]: publish gps payload succeed");
     std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
     struct timespec time_stu;
@@ -135,7 +135,7 @@ void cyberdog::sensor::GpsCarpo::UpdateSimulationData()
     cyberdog_payload->fix_type = static_cast<uint8_t>(0);
     cyberdog_payload->num_sv = static_cast<uint8_t>(0);
     payload_callback_(cyberdog_payload);
-    INFO("[cyberdog_gps]: publish gps payload succeed");
+    // INFO("[cyberdog_gps]: publish gps payload succeed");
   }
 }
 PLUGINLIB_EXPORT_CLASS(cyberdog::sensor::GpsCarpo, cyberdog::sensor::GpsBase)

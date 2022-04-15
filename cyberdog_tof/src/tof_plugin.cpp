@@ -681,10 +681,10 @@ void cyberdog::sensor::TofCarpo::UpdateSimulationData()
 {
   while (true) {
     if (!rclcpp::ok()) {
-      INFO("[cyberdog_tof]: !rclcpp::ok()");
+      WARN("[cyberdog_tof]: !rclcpp::ok()");
       break;
     }
-    INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
+    // INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
     std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
 
@@ -707,7 +707,7 @@ void cyberdog::sensor::TofCarpo::UpdateSimulationData()
     multiple_tof_payload->left_front = *tof_payload;
     multiple_tof_payload->right_front = *tof_payload;
     payload_callback_(multiple_tof_payload);
-    INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
+    // INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
   }
 }
 
