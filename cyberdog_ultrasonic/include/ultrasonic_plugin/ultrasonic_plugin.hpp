@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 #include "ultrasonic_base/ultrasonic_base.hpp"
 #include "embed_protocol/embed_protocol.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
@@ -40,11 +41,14 @@ typedef struct _ultrasonic_can
 
 class UltrasonicCarpo : public cyberdog::sensor::UltrasonicBase
 {
+  using SwitchState = enum {open = 0, start, stop, close, };          // [类型]切换状态
+
 public:
-  bool Open() override;
-  bool Start() override;
-  bool Stop() override;
-  bool Close() override;
+  bool Init(bool simulator = false) override;
+  bool Open_() override;
+  bool Start_() override;
+  bool Stop_() override;
+  bool Close_() override;
   // explicit UltrasonicCarpo():cyberdog::common::CyberdogLogger(
   // "cyberdog_ultrasonic"
   // ){}
@@ -54,6 +58,7 @@ private:
   void ultrasonic_pub_callback();
 
 private:
+  std::map<SwitchState, std::string> state_msg_;                      // 状态消息
   std::shared_ptr<EVM::Protocol<ultrasonic_can>> ultrasonic_can_;
   std::shared_ptr<ultrasonic_can> ultrasonic_data_;
   std::shared_ptr<sensor_msgs::msg::Range> ultrasonic_payload;
@@ -61,6 +66,10 @@ private:
   bool started_ = false;
   std::mutex mtx;
   std::thread ultrasonic_pub_thread;
+  std::thread ultrasonic_pub_thread_simulator;
+  void UpdateSimulationData();                                        // 更新模拟数据
+
+
   LOGGER_MINOR_INSTANCE("cyberdog_ultrasonic");
 };  // class UltrasonicCarpo
 }  // namespace sensor

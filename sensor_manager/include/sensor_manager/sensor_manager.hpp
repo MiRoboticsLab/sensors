@@ -18,6 +18,7 @@
 #include <mutex>
 #include <thread>
 #include <string>
+#include <vector>
 #include <memory>
 #include "pluginlib/class_loader.hpp"
 #include "bcmgps_base/bcmgps_base.hpp"
@@ -30,7 +31,6 @@
 #include "protocol/msg/single_tof_payload.hpp"
 #include "protocol/msg/multiple_tof_payload.hpp"
 #include "rclcpp/rclcpp.hpp"
-
 
 namespace cyberdog
 {
@@ -61,23 +61,25 @@ private:
 
 private:
   std::string name_;
+  std::vector<std::string> simulator_;
   rclcpp::Node::SharedPtr node_ptr_ {nullptr};
-  void gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg);
-  void lidar_payload_callback(std::shared_ptr<ScanMsg> msg);
-  void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
-  void tof_payload_callback(std::shared_ptr<protocol::msg::MultipleTofPayload> msg);
 
 private:
   std::shared_ptr<cyberdog::sensor::GpsBase> gps_;
-  std::shared_ptr<cyberdog::sensor::LidarBase> lidar_;
   rclcpp::Publisher<protocol::msg::GpsPayload>::SharedPtr gps_publisher_;
+  void gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg);
+
+  std::shared_ptr<cyberdog::sensor::LidarBase> lidar_;
   rclcpp::Publisher<ScanMsg>::SharedPtr lidar_publisher_;
+  void lidar_payload_callback(std::shared_ptr<ScanMsg> msg);
 
   std::shared_ptr<cyberdog::sensor::UltrasonicBase> ultrasonic_;
   rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr ultrasonic_publisher_;
+  void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
 
   std::shared_ptr<cyberdog::sensor::TofBase> tof_;
   rclcpp::Publisher<protocol::msg::MultipleTofPayload>::SharedPtr tof_publisher_;
+  void tof_payload_callback(std::shared_ptr<protocol::msg::MultipleTofPayload> msg);
 };  // class SensorManager
 }  // namespace sensor
 }  // namespace cyberdog

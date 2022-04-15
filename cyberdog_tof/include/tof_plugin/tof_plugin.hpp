@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 #include "tof_base/tof_base.hpp"
 #include "embed_protocol/embed_protocol.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
@@ -39,13 +40,17 @@ typedef struct _tof_can
 
 class TofCarpo : public cyberdog::sensor::TofBase
 {
+  using SwitchState = enum {open = 0, start, stop, close, };          // [类型]切换状态
+
 public:
-  bool Open() override;
-  bool Start() override;
-  bool Stop() override;
-  bool Close() override;
+  bool Init(bool simulator = false) override;
+  bool Open_() override;
+  bool Start_() override;
+  bool Stop_() override;
+  bool Close_() override;
 
 private:
+  std::map<SwitchState, std::string> state_msg_;                      // 状态消息
   bool SingleOpen(uint8_t serial_number);
   bool SingleStop(uint8_t serial_number);
   bool SingleStart(uint8_t serial_number);
@@ -58,6 +63,8 @@ private:
 private:
   std::shared_ptr<protocol::msg::MultipleTofPayload> multiple_tof_payload;
   std::thread tof_pub_thread;
+  std::thread tof_pub_thread_simulator;
+  void UpdateSimulationData();                                      // 更新模拟数据
 
 
   bool opened_;

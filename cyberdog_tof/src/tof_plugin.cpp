@@ -26,7 +26,55 @@
 #include "cyberdog_common/cyberdog_log.hpp"
 
 
-bool cyberdog::sensor::TofCarpo::Open()
+bool cyberdog::sensor::TofCarpo::Init(bool simulator)
+{
+  this->state_msg_.insert({SwitchState::open, "Open"});
+  this->state_msg_.insert({SwitchState::start, "Start"});
+  this->state_msg_.insert({SwitchState::stop, "Stop"});
+  this->state_msg_.insert({SwitchState::close, "Close"});
+
+  if (!simulator) {
+    this->Open = std::bind(&cyberdog::sensor::TofCarpo::Open_, this);
+    this->Start = std::bind(&cyberdog::sensor::TofCarpo::Start_, this);
+    this->Stop = std::bind(&cyberdog::sensor::TofCarpo::Stop_, this);
+    this->Close = std::bind(&cyberdog::sensor::TofCarpo::Close_, this);
+  } else {
+    auto Simulator = [this](SwitchState now_state) -> bool {
+        INFO("%s cyberdog_tof ...", this->state_msg_[now_state].c_str());
+        switch (now_state) {
+          case SwitchState::open:
+          case SwitchState::stop:
+            break;
+          case SwitchState::start:
+            multiple_tof_payload = std::make_shared<protocol::msg::MultipleTofPayload>();
+            tof_pub_thread_simulator =
+              std::thread(std::bind(&cyberdog::sensor::TofCarpo::UpdateSimulationData, this));
+            break;
+          case SwitchState::close:
+            if ((&tof_pub_thread_simulator != nullptr) &&
+              tof_pub_thread_simulator.joinable())
+            {
+              tof_pub_thread_simulator.join();
+            }
+            break;
+          default:
+            WARN("cyberdog_tof not recognized state");
+            break;
+        }
+
+        INFO("cyberdog_tof %s ok", this->state_msg_[now_state].c_str());
+        return true;
+      };
+    this->Open = std::bind(Simulator, SwitchState::open);
+    this->Start = std::bind(Simulator, SwitchState::start);
+    this->Stop = std::bind(Simulator, SwitchState::stop);
+    this->Close = std::bind(Simulator, SwitchState::close);
+  }
+  return true;
+}
+
+
+bool cyberdog::sensor::TofCarpo::Open_()
 {
   multiple_tof_payload = std::make_shared<protocol::msg::MultipleTofPayload>();
 
@@ -65,7 +113,7 @@ bool cyberdog::sensor::TofCarpo::Open()
 }
 
 
-bool cyberdog::sensor::TofCarpo::Start()
+bool cyberdog::sensor::TofCarpo::Start_()
 {
   if (SingleStart(protocol::msg::SingleTofPayload::LEFT_FRONT)) {
     INFO("tof left front started successfully");
@@ -96,7 +144,7 @@ bool cyberdog::sensor::TofCarpo::Start()
   return started_;
 }
 
-bool cyberdog::sensor::TofCarpo::Stop()
+bool cyberdog::sensor::TofCarpo::Stop_()
 {
   if (SingleStop(protocol::msg::SingleTofPayload::LEFT_FRONT)) {
     INFO("tof left front stoped successfully");
@@ -125,7 +173,7 @@ bool cyberdog::sensor::TofCarpo::Stop()
   return !stopped_;
 }
 
-bool cyberdog::sensor::TofCarpo::Close()
+bool cyberdog::sensor::TofCarpo::Close_()
 {
   closed_ = stopped_;
   if (closed_ == true) {
@@ -626,6 +674,41 @@ void cyberdog::sensor::TofCarpo::right_back_callback(
   tof_payload->data = obj;
   tof_payload->data_available = tof_opened_right_back;
   multiple_tof_payload->right_back = *tof_payload;
+}
+
+
+void cyberdog::sensor::TofCarpo::UpdateSimulationData()
+{
+  while (true) {
+    if (!rclcpp::ok()) {
+      WARN("[cyberdog_tof]: !rclcpp::ok()");
+      break;
+    }
+    // INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+
+
+    const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
+    std::vector<float> obj;
+    for (size_t i = 0; i < datanum; i++) {
+      obj.push_back(1.0f * protocol::msg::SingleTofPayload::SCALE_FACTOR);
+    }
+    auto tof_payload = std::make_shared<protocol::msg::SingleTofPayload>();
+    struct timespec time_stu;
+    clock_gettime(CLOCK_REALTIME, &time_stu);
+    tof_payload->header.frame_id = std::string("tof_right_back");
+    tof_payload->header.stamp.nanosec = time_stu.tv_nsec;
+    tof_payload->header.stamp.sec = time_stu.tv_sec;
+    tof_payload->tof_position = protocol::msg::SingleTofPayload::RIGHT_BACK;
+    tof_payload->data = obj;
+    tof_payload->data_available = false;
+    multiple_tof_payload->right_back = *tof_payload;
+    multiple_tof_payload->left_back = *tof_payload;
+    multiple_tof_payload->left_front = *tof_payload;
+    multiple_tof_payload->right_front = *tof_payload;
+    payload_callback_(multiple_tof_payload);
+    // INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
+  }
 }
 
 PLUGINLIB_EXPORT_CLASS(cyberdog::sensor::TofCarpo, cyberdog::sensor::TofBase)

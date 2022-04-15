@@ -20,7 +20,54 @@
 #include "cyberdog_common/cyberdog_log.hpp"
 
 
-bool cyberdog::sensor::GpsCarpo::Open()
+bool cyberdog::sensor::GpsCarpo::Init(bool simulator)
+{
+  this->state_msg_.insert({SwitchState::open, "Open"});
+  this->state_msg_.insert({SwitchState::start, "Start"});
+  this->state_msg_.insert({SwitchState::stop, "Stop"});
+  this->state_msg_.insert({SwitchState::close, "Close"});
+
+  if (!simulator) {
+    this->Open = std::bind(&cyberdog::sensor::GpsCarpo::Open_, this);
+    this->Start = std::bind(&cyberdog::sensor::GpsCarpo::Start_, this);
+    this->Stop = std::bind(&cyberdog::sensor::GpsCarpo::Stop_, this);
+    this->Close = std::bind(&cyberdog::sensor::GpsCarpo::Close_, this);
+  } else {
+    auto Simulator = [this](SwitchState now_state) -> bool {
+        INFO("%s gps ...", this->state_msg_[now_state].c_str());
+        switch (now_state) {
+          case SwitchState::open:
+          case SwitchState::stop:
+            break;
+          case SwitchState::start:
+            gps_pub_thread_simulator =
+              std::thread(std::bind(&cyberdog::sensor::GpsCarpo::UpdateSimulationData, this));
+            break;
+          case SwitchState::close:
+            if ((&gps_pub_thread_simulator != nullptr) &&
+              gps_pub_thread_simulator.joinable())
+            {
+              gps_pub_thread_simulator.join();
+            }
+            break;
+          default:
+            WARN("gps not recognized state");
+            break;
+        }
+
+        INFO("gps %s ok", this->state_msg_[now_state].c_str());
+        return true;
+      };
+    this->Open = std::bind(Simulator, SwitchState::open);
+    this->Start = std::bind(Simulator, SwitchState::start);
+    this->Stop = std::bind(Simulator, SwitchState::stop);
+    this->Close = std::bind(Simulator, SwitchState::close);
+  }
+  return true;
+}
+
+
+bool cyberdog::sensor::GpsCarpo::Open_()
 {
   bcmgps_ = std::make_shared<bcm_gps::GPS>();
   bcmgps_->SetCallback(
@@ -30,19 +77,19 @@ bool cyberdog::sensor::GpsCarpo::Open()
   return bcmgps_->IsOpened();
 }
 
-bool cyberdog::sensor::GpsCarpo::Start()
+bool cyberdog::sensor::GpsCarpo::Start_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Start();}
   return bcmgps_->IsStarted();
 }
 
-bool cyberdog::sensor::GpsCarpo::Stop()
+bool cyberdog::sensor::GpsCarpo::Stop_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Stop();}
   return bcmgps_->IsStarted();
 }
 
-bool cyberdog::sensor::GpsCarpo::Close()
+bool cyberdog::sensor::GpsCarpo::Close_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Close();}
   bcmgps_ = nullptr;
@@ -67,5 +114,28 @@ void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(
     INFO("[cyberdog_gps]: payload_callback_==nullptr ");
   }
 }
+void cyberdog::sensor::GpsCarpo::UpdateSimulationData()
+{
+  auto cyberdog_payload = std::make_shared<protocol::msg::GpsPayload>();
+  while (true) {
+    if (!rclcpp::ok()) {
+      WARN("[cyberdog_gps]: !rclcpp::ok()");
+      break;
+    }
+    // INFO("[cyberdog_gps]: publish gps payload succeed");
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
+    struct timespec time_stu;
+    clock_gettime(CLOCK_REALTIME, &time_stu);
+    cyberdog_payload->sec = time_stu.tv_sec;
+    cyberdog_payload->nanosec = time_stu.tv_nsec;
+    cyberdog_payload->itow = static_cast<uint32_t>(0);
+    cyberdog_payload->lat = static_cast<_Float64>(0);
+    cyberdog_payload->lon = static_cast<_Float64>(0);
+    cyberdog_payload->fix_type = static_cast<uint8_t>(0);
+    cyberdog_payload->num_sv = static_cast<uint8_t>(0);
+    payload_callback_(cyberdog_payload);
+    // INFO("[cyberdog_gps]: publish gps payload succeed");
+  }
+}
 PLUGINLIB_EXPORT_CLASS(cyberdog::sensor::GpsCarpo, cyberdog::sensor::GpsBase)
