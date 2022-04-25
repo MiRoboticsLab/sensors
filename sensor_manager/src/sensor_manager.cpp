@@ -47,7 +47,7 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::gps_payload_callback, this,
       std::placeholders::_1));
-
+/*
   // lidar
   INFO("sensor manager Configuring begin");
   INFO("lidar Configuring beginning");
@@ -90,40 +90,23 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::tof_payload_callback, this,
       std::placeholders::_1));
-
+*/
   INFO("sensor_manager Configuring,success");
 }
 
 bool cyberdog::sensor::SensorManager::Init()
 {
   INFO("SensorManager Initing begin");
-
-  this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
-  this->node_ptr_->get_parameter("simulator", this->simulator_);
-  auto is_simulator = [this](std::string sensor_name) -> bool {
-      return static_cast<bool>(std::find(
-               this->simulator_.begin(), this->simulator_.end(),
-               sensor_name) != this->simulator_.end());
-    };
-
-  return bool(
-    gps_->Init(is_simulator("gps")) && gps_->Open() &&
-    ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open() &&
-    tof_->Init(is_simulator("tof")) && tof_->Open() &&
-    lidar_->Init(is_simulator("lidar")) && lidar_->Open()
-  );
+  gps_->Init();
+  gps_->Open();
+  return true;
 }
 
 void cyberdog::sensor::SensorManager::Run()
 {
   INFO("SensorManager Running begin");
-  if (this->lidar_->Start() &&
-    this->gps_->Start() &&
-    this->ultrasonic_->Start() &&
-    this->tof_->Start())
-  {
-    rclcpp::spin(node_ptr_);
-  }
+  this->gps_->Start();
+  rclcpp::spin(node_ptr_);
   rclcpp::shutdown();
 }
 

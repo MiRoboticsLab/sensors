@@ -202,9 +202,9 @@ bool bcm_gps::GPS::Init()
   if (!cyberdog::common::CyberdogToml::Get(value, "onlyfirst_download", onlyfirst_download)) {
     ERROR("[cyberdog_gps]: fail to read key onlyfirst_download from toml");
   }
-  std::string tty_str;
-  if (!cyberdog::common::CyberdogToml::Get(value, "tty", tty_str)) {
-    ERROR("[cyberdog_gps]: fail to read key tty from toml");
+  std::string spi_str;
+  if (!cyberdog::common::CyberdogToml::Get(value, "spi", spi_str)) {
+    ERROR("[cyberdog_gps]: fail to read key spi from toml");
   }
   std::string patch_path;
   if (!cyberdog::common::CyberdogToml::Get(value, "patch_path", patch_path)) {
@@ -236,23 +236,27 @@ bool bcm_gps::GPS::Init()
   }
 
   // reset entire chip
-  system("echo 0 > /sys/devices/bcm4775/nstandby");
+  system("sudo echo 224 > /sys/class/gpio/export");
   sleep(1);
-  system("echo 1 > /sys/devices/bcm4775/nstandby");
+  system("sudo echo low > /sys/class/gpio/gpio224/direction");
+  system("sudo echo high > /sys/class/gpio/gpio224/direction");
 
   std::string local_log_dir;
   local_log_dir = ament_index_cpp::get_package_share_directory("cyberdog_gps") + std::string(
     "/logs/");
   INFO("[cyberdog_gps]: Log path: %s", local_log_dir.c_str());
-  LD2OS_openLog(local_log_dir);
+  // LD2OS_openLog(local_log_dir);
+  LD2OS_openLog();
   int portNumber = -1;
   const int baudrate = 3000000;
-  const char * tty = tty_str.c_str();
-  LoDi2SerialConnection connType = LODI2_SERIAL_UART;
+  const char * tty = spi_str.c_str();
+  LoDi2SerialConnection connType = LODI2_SERIAL_SPI;
 
   if (!skip_download) {
     INFO("[cyberdog_gps]: Start load patch: %s", patch_path.c_str());
     // Open serial port
+    INFO("[cyberdog_gps]: tty: %s", tty);
+
     LD2OS_open(connType, portNumber, baudrate, tty);
     // Download patch
     INFO("[cyberdog_gps]: down load patch: %s", patch_path.c_str());
