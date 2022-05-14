@@ -245,9 +245,11 @@ bool bcm_gps::GPS::Init()
   std::string local_log_dir;
   local_log_dir = ament_index_cpp::get_package_share_directory("cyberdog_gps") + std::string(
     "/logs/");
+  local_log_dir = "/opt/ros2/cyberdog/";
   INFO("[cyberdog_gps]: Log path: %s", local_log_dir.c_str());
   // LD2OS_openLog(local_log_dir);
   LD2OS_openLog();
+  INFO("[cyberdog_gps]: Log path set ok!!!");
   int portNumber = -1;
   const int baudrate = 3000000;
   const char * tty = spi_str.c_str();

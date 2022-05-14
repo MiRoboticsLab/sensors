@@ -47,7 +47,7 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::gps_payload_callback, this,
       std::placeholders::_1));
-/*
+
   // lidar
   INFO("sensor manager Configuring begin");
   INFO("lidar Configuring beginning");
@@ -90,23 +90,50 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::tof_payload_callback, this,
       std::placeholders::_1));
-*/
+
   INFO("sensor_manager Configuring,success");
 }
 
 bool cyberdog::sensor::SensorManager::Init()
 {
   INFO("SensorManager Initing begin");
-  gps_->Init();
-  gps_->Open();
-  return true;
+
+  this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
+  this->node_ptr_->get_parameter("simulator", this->simulator_);
+  auto is_simulator = [this](std::string sensor_name) -> bool {
+      return static_cast<bool>(std::find(
+               this->simulator_.begin(), this->simulator_.end(),
+               sensor_name) != this->simulator_.end());
+    };
+  INFO("gps is_simulator %d",is_simulator("gps"));
+  INFO("ultrasonic_ is_simulator %d",is_simulator("ultrasonic"));
+  INFO("tof_ is_simulator %d",is_simulator("tof"));
+  INFO("lidar_ is_simulator %d",is_simulator("lidar"));
+  /*
+  return bool(
+    gps_->Init(is_simulator("gps")) && gps_->Open() &&
+    ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open() &&
+    tof_->Init(is_simulator("tof")) && tof_->Open() &&
+    lidar_->Init(is_simulator("lidar")) && lidar_->Open()
+  */
+   return bool(
+    gps_->Init(is_simulator("gps")) && gps_->Open() &&
+    ultrasonic_->Init(true) && ultrasonic_->Open() &&
+    tof_->Init(true) && tof_->Open() &&
+    lidar_->Init(true) && lidar_->Open()
+  );
 }
 
 void cyberdog::sensor::SensorManager::Run()
 {
   INFO("SensorManager Running begin");
-  this->gps_->Start();
-  rclcpp::spin(node_ptr_);
+  if (this->lidar_->Start() &&
+    this->gps_->Start() &&
+    this->ultrasonic_->Start() &&
+    this->tof_->Start())
+  {
+    rclcpp::spin(node_ptr_);
+  }
   rclcpp::shutdown();
 }
 
