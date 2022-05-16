@@ -236,11 +236,6 @@ bool bcm_gps::GPS::Init()
   }
 
   // reset entire chip
-  //system("echo 224 > /sys/class/gpio/export");
-  //sleep(1);
-  //system("echo low > /sys/class/gpio/gpio224/direction");
-  //system("echo high > /sys/class/gpio/gpio224/direction");
-
   LD2OS_initGpio();
   std::string local_log_dir;
   local_log_dir = ament_index_cpp::get_package_share_directory("cyberdog_gps") + std::string(

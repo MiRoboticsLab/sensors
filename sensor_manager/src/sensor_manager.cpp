@@ -105,22 +105,15 @@ bool cyberdog::sensor::SensorManager::Init()
                this->simulator_.begin(), this->simulator_.end(),
                sensor_name) != this->simulator_.end());
     };
-  INFO("gps is_simulator %d",is_simulator("gps"));
-  INFO("ultrasonic_ is_simulator %d",is_simulator("ultrasonic"));
-  INFO("tof_ is_simulator %d",is_simulator("tof"));
-  INFO("lidar_ is_simulator %d",is_simulator("lidar"));
-  /*
+  INFO("gps is_simulator %d", is_simulator("gps"));
+  INFO("ultrasonic_ is_simulator %d", is_simulator("ultrasonic"));
+  INFO("tof_ is_simulator %d", is_simulator("tof"));
+  INFO("lidar_ is_simulator %d", is_simulator("lidar"));
   return bool(
     gps_->Init(is_simulator("gps")) && gps_->Open() &&
     ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open() &&
     tof_->Init(is_simulator("tof")) && tof_->Open() &&
     lidar_->Init(is_simulator("lidar")) && lidar_->Open()
-  */
-   return bool(
-    gps_->Init(is_simulator("gps")) && gps_->Open() &&
-    ultrasonic_->Init(true) && ultrasonic_->Open() &&
-    tof_->Init(true) && tof_->Open() &&
-    lidar_->Init(true) && lidar_->Open()
   );
 }
 
