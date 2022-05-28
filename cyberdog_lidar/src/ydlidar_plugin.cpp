@@ -28,6 +28,7 @@ bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
   std::string lidar_config_dir = ament_index_cpp::get_package_share_directory("params") +
     "/toml_config/sensors/lidar.toml";
   INFO("Params config file dir:%s", lidar_config_dir.c_str());
+
   if (access(lidar_config_dir.c_str(), F_OK)) {
     ERROR("Params config file does not exist");
     return false;
@@ -51,8 +52,9 @@ bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
   }
 
   this->scan_ptr_ = std::make_shared<ScanMsg>();
-  this->scan_ptr_->header.frame_id = toml::find_or<std::string>(
+  this->scan_ptr_->header.frame_id = toml::find_or(
     this->params_toml_, "dylidar", "frame_id", "laser_frame");
+  INFO("this->scan_ptr_->header.frame_id = %s", this->scan_ptr_->header.frame_id.c_str());
 
   if (!simulator) {
     this->Open = std::bind(&cyberdog::sensor::YdlidarCarpo::Open_, this);
@@ -100,91 +102,91 @@ bool cyberdog::sensor::YdlidarCarpo::Open_()
   this->lidar_ptr_ = std::make_shared<CYdLidar>();
 
   std::string str_optvalue;
-  str_optvalue = toml::find_or<std::string>(this->params_toml_, "dylidar", "port", "/dev/ydlidar");
+  str_optvalue = toml::find_or(this->params_toml_, "dylidar", "port", "/dev/ydlidar");
   this->lidar_ptr_->setlidaropt(LidarPropSerialPort, str_optvalue.c_str(), str_optvalue.size());
   DEBUG("[Open] dylidar->port = %s", str_optvalue.c_str());
 
-  str_optvalue = toml::find_or<std::string>(this->params_toml_, "dylidar", "ignore_array", "");
+  str_optvalue = toml::find_or(this->params_toml_, "dylidar", "ignore_array", "");
   this->lidar_ptr_->setlidaropt(LidarPropIgnoreArray, str_optvalue.c_str(), str_optvalue.size());
   DEBUG("[Open] dylidar->ignore_array = %s", str_optvalue.c_str());
 
   int int_optvalue;
-  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "baudrate", 512000);
+  int_optvalue = toml::find_or(this->params_toml_, "dylidar", "baudrate", 512000);
   this->lidar_ptr_->setlidaropt(LidarPropSerialBaudrate, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->baudrate = %d", int_optvalue);
 
   int_optvalue =
-    toml::find_or<int>(
+    toml::find_or(
     this->params_toml_, "dylidar", "lidar_type", static_cast<int>(TYPE_TRIANGLE));
   this->lidar_ptr_->setlidaropt(LidarPropLidarType, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->lidar_type = %d", int_optvalue);
 
   int_optvalue =
-    toml::find_or<int>(
+    toml::find_or(
     this->params_toml_, "dylidar", "device_type", static_cast<int>(YDLIDAR_TYPE_SERIAL));
   this->lidar_ptr_->setlidaropt(LidarPropDeviceType, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->device_type = %d", int_optvalue);
 
-  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "sample_rate", 9);
+  int_optvalue = toml::find_or(this->params_toml_, "dylidar", "sample_rate", 9);
   this->lidar_ptr_->setlidaropt(LidarPropSampleRate, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->sample_rate = %d", int_optvalue);
 
-  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "abnormal_check_count", 4);
+  int_optvalue = toml::find_or(this->params_toml_, "dylidar", "abnormal_check_count", 4);
   this->lidar_ptr_->setlidaropt(LidarPropAbnormalCheckCount, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->sample_rate = %d", int_optvalue);
 
   bool bool_optvalue;
-  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "resolution_fixed", false);
+  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "resolution_fixed", false);
   this->lidar_ptr_->setlidaropt(LidarPropFixedResolution, &bool_optvalue, sizeof(bool));
   DEBUG("[Open] dylidar->resolution_fixed = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "reversion", true);
+  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "reversion", true);
   this->lidar_ptr_->setlidaropt(LidarPropReversion, &bool_optvalue, sizeof(bool));
   DEBUG("[Open] dylidar->reversion = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "inverted", true);
+  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "inverted", true);
   this->lidar_ptr_->setlidaropt(LidarPropInverted, &bool_optvalue, sizeof(bool));
   DEBUG("[Open] dylidar->inverted = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "auto_reconnect", true);
+  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "auto_reconnect", true);
   this->lidar_ptr_->setlidaropt(LidarPropAutoReconnect, &bool_optvalue, sizeof(bool));
   DEBUG("[Open] dylidar->auto_reconnect = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "isSingleChannel", false);
+  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "isSingleChannel", false);
   this->lidar_ptr_->setlidaropt(LidarPropSingleChannel, &bool_optvalue, sizeof(bool));
   DEBUG("[Open] dylidar->isSingleChannel = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "intensity", false);
+  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "intensity", false);
   this->lidar_ptr_->setlidaropt(LidarPropIntenstiy, &bool_optvalue, sizeof(bool));
   DEBUG("[Open] dylidar->intensity = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "support_motor_dtr", false);
+  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "support_motor_dtr", false);
   this->lidar_ptr_->setlidaropt(LidarPropSupportMotorDtrCtrl, &bool_optvalue, sizeof(bool));
   DEBUG("[Open] dylidar->support_motor_dtr = %s", bool_optvalue ? "True" : "False");
 
   float float_optvalue;
   float_optvalue =
-    toml::find_or<float>(this->params_toml_, "dylidar", "angle_max", static_cast<float>(180.0f));
+    toml::find_or(this->params_toml_, "dylidar", "angle_max", static_cast<float>(180.0f));
   this->lidar_ptr_->setlidaropt(LidarPropMaxAngle, &float_optvalue, sizeof(float));
   DEBUG("[Open] dylidar->angle_max = %f", float_optvalue);
 
   float_optvalue =
-    toml::find_or<float>(this->params_toml_, "dylidar", "angle_min", static_cast<float>(-180.0f));
+    toml::find_or(this->params_toml_, "dylidar", "angle_min", static_cast<float>(-180.0f));
   this->lidar_ptr_->setlidaropt(LidarPropMinAngle, &float_optvalue, sizeof(float));
   DEBUG("[Open] dylidar->angle_min = %f", float_optvalue);
 
   float_optvalue =
-    toml::find_or<float>(this->params_toml_, "dylidar", "range_max", static_cast<float>(64.f));
+    toml::find_or(this->params_toml_, "dylidar", "range_max", static_cast<float>(64.f));
   this->lidar_ptr_->setlidaropt(LidarPropMaxRange, &float_optvalue, sizeof(float));
   DEBUG("[Open] dylidar->range_max = %f", float_optvalue);
 
   float_optvalue =
-    toml::find_or<float>(this->params_toml_, "dylidar", "range_min", static_cast<float>(0.1f));
+    toml::find_or(this->params_toml_, "dylidar", "range_min", static_cast<float>(0.1f));
   this->lidar_ptr_->setlidaropt(LidarPropMinRange, &float_optvalue, sizeof(float));
   DEBUG("[Open] dylidar->range_min = %f", float_optvalue);
 
   this->frequency_ =
-    toml::find_or<float>(this->params_toml_, "dylidar", "frequency", static_cast<float>(10.f));
+    toml::find_or(this->params_toml_, "dylidar", "frequency", static_cast<float>(10.f));
   this->lidar_ptr_->setlidaropt(LidarPropScanFrequency, &this->frequency_, sizeof(float));
   DEBUG("[Open] dylidar->frequency = %f", this->frequency_);
 
@@ -195,6 +197,7 @@ bool cyberdog::sensor::YdlidarCarpo::Open_()
     this->Close_();
     return false;
   }
+
   this->sensor_state_ = SwitchState::open;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return true;
@@ -217,7 +220,6 @@ bool cyberdog::sensor::YdlidarCarpo::Start_()
     return false;
   }
 
-  this->scan_ptr_ = std::make_shared<ScanMsg>();
   this->update_data_thread_ptr_ = std::make_shared<std::thread>(
     std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateData, this));
 
@@ -300,6 +302,7 @@ void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
   int sleep_time = static_cast<int>(1000 / this->frequency_);
   while (true) {
     if (!rclcpp::ok()) {
+      WARN("[cyberdog_lidar]: !rclcpp::ok()");
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
