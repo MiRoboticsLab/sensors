@@ -50,13 +50,9 @@ bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
     return false;
   }
 
-  this->frequency_ = 10.f;
-  this->frequency_ = toml::find<float>(this->params_toml_, "dylidar", "frequency");
-
   this->scan_ptr_ = std::make_shared<ScanMsg>();
-  this->scan_ptr_->header.frame_id = "laser_frame";
-  this->scan_ptr_->header.frame_id = toml::find<std::string>(
-    this->params_toml_, "dylidar", "frame_id");
+  this->scan_ptr_->header.frame_id = toml::find_or<std::string>(
+    this->params_toml_, "dylidar", "frame_id", "laser_frame");
 
   if (!simulator) {
     this->Open = std::bind(&cyberdog::sensor::YdlidarCarpo::Open_, this);
@@ -104,87 +100,90 @@ bool cyberdog::sensor::YdlidarCarpo::Open_()
   this->lidar_ptr_ = std::make_shared<CYdLidar>();
 
   std::string str_optvalue;
-  str_optvalue = "/dev/ydlidar";
-  str_optvalue = toml::find<std::string>(this->params_toml_, "dylidar", "port");
+  str_optvalue = toml::find_or<std::string>(this->params_toml_, "dylidar", "port", "/dev/ydlidar");
   this->lidar_ptr_->setlidaropt(LidarPropSerialPort, str_optvalue.c_str(), str_optvalue.size());
+  DEBUG("[Open] dylidar->port = %s", str_optvalue.c_str());
 
-  str_optvalue = "";
-  str_optvalue = toml::find<std::string>(this->params_toml_, "dylidar", "ignore_array");
+  str_optvalue = toml::find_or<std::string>(this->params_toml_, "dylidar", "ignore_array", "");
   this->lidar_ptr_->setlidaropt(LidarPropIgnoreArray, str_optvalue.c_str(), str_optvalue.size());
+  DEBUG("[Open] dylidar->ignore_array = %s", str_optvalue.c_str());
 
   int int_optvalue;
-  int_optvalue = 230400;
-  int_optvalue = toml::find<int>(this->params_toml_, "dylidar", "baudrate");
+  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "baudrate", 512000);
   this->lidar_ptr_->setlidaropt(LidarPropSerialBaudrate, &int_optvalue, sizeof(int));
+  DEBUG("[Open] dylidar->baudrate = %d", int_optvalue);
 
-  int_optvalue = TYPE_TRIANGLE;
-  int_optvalue = toml::find<int>(this->params_toml_, "dylidar", "lidar_type");
+  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "lidar_type", int(TYPE_TRIANGLE));
   this->lidar_ptr_->setlidaropt(LidarPropLidarType, &int_optvalue, sizeof(int));
+  DEBUG("[Open] dylidar->lidar_type = %d", int_optvalue);
 
-  int_optvalue = YDLIDAR_TYPE_SERIAL;
-  int_optvalue = toml::find<int>(this->params_toml_, "dylidar", "device_type");
+  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "device_type", int(YDLIDAR_TYPE_SERIAL));
   this->lidar_ptr_->setlidaropt(LidarPropDeviceType, &int_optvalue, sizeof(int));
+  DEBUG("[Open] dylidar->device_type = %d", int_optvalue);
 
-  int_optvalue = 9;
-  int_optvalue = toml::find<int>(this->params_toml_, "dylidar", "sample_rate");
+  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "sample_rate", 9);
   this->lidar_ptr_->setlidaropt(LidarPropSampleRate, &int_optvalue, sizeof(int));
+  DEBUG("[Open] dylidar->sample_rate = %d", int_optvalue);
 
-  int_optvalue = 4;
-  int_optvalue = toml::find<int>(this->params_toml_, "dylidar", "abnormal_check_count");
+  int_optvalue = toml::find_or<int>(this->params_toml_, "dylidar", "abnormal_check_count", 4);
   this->lidar_ptr_->setlidaropt(LidarPropAbnormalCheckCount, &int_optvalue, sizeof(int));
+  DEBUG("[Open] dylidar->sample_rate = %d", int_optvalue);
 
   bool bool_optvalue;
-  bool_optvalue = false;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "resolution_fixed");
+  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "resolution_fixed", false);
   this->lidar_ptr_->setlidaropt(LidarPropFixedResolution, &bool_optvalue, sizeof(bool));
+  DEBUG("[Open] dylidar->resolution_fixed = %s", bool_optvalue?"True":"False");
 
-  bool_optvalue = true;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "reversion");
+  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "reversion", true);
   this->lidar_ptr_->setlidaropt(LidarPropReversion, &bool_optvalue, sizeof(bool));
+  DEBUG("[Open] dylidar->reversion = %s", bool_optvalue?"True":"False");
 
-  bool_optvalue = true;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "inverted");
+  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "inverted", true);
   this->lidar_ptr_->setlidaropt(LidarPropInverted, &bool_optvalue, sizeof(bool));
+  DEBUG("[Open] dylidar->inverted = %s", bool_optvalue?"True":"False");
 
-  bool_optvalue = true;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "auto_reconnect");
+  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "auto_reconnect", true);
   this->lidar_ptr_->setlidaropt(LidarPropAutoReconnect, &bool_optvalue, sizeof(bool));
+  DEBUG("[Open] dylidar->auto_reconnect = %s", bool_optvalue?"True":"False");
 
-  bool_optvalue = false;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "isSingleChannel");
+  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "isSingleChannel", false);
   this->lidar_ptr_->setlidaropt(LidarPropSingleChannel, &bool_optvalue, sizeof(bool));
+  DEBUG("[Open] dylidar->isSingleChannel = %s", bool_optvalue?"True":"False");
 
-  bool_optvalue = false;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "intensity");
+  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "intensity", false);
   this->lidar_ptr_->setlidaropt(LidarPropIntenstiy, &bool_optvalue, sizeof(bool));
+  DEBUG("[Open] dylidar->intensity = %s", bool_optvalue?"True":"False");
 
-  bool_optvalue = false;
-  bool_optvalue = toml::find<bool>(this->params_toml_, "dylidar", "support_motor_dtr");
+  bool_optvalue = toml::find_or<bool>(this->params_toml_, "dylidar", "support_motor_dtr", false);
   this->lidar_ptr_->setlidaropt(LidarPropSupportMotorDtrCtrl, &bool_optvalue, sizeof(bool));
+  DEBUG("[Open] dylidar->support_motor_dtr = %s", bool_optvalue?"True":"False");
 
   float float_optvalue;
-  float_optvalue = 180.0f;
-  float_optvalue = toml::find<float>(this->params_toml_, "dylidar", "angle_max");
+  float_optvalue = toml::find_or<float>(this->params_toml_, "dylidar", "angle_max", 180.0f);
   this->lidar_ptr_->setlidaropt(LidarPropMaxAngle, &float_optvalue, sizeof(float));
+  DEBUG("[Open] dylidar->angle_max = %f", float_optvalue);
 
-  float_optvalue = -180.0f;
-  float_optvalue = toml::find<float>(this->params_toml_, "dylidar", "angle_min");
+  float_optvalue = toml::find_or<float>(this->params_toml_, "dylidar", "angle_min", -180.0f);
   this->lidar_ptr_->setlidaropt(LidarPropMinAngle, &float_optvalue, sizeof(float));
+  DEBUG("[Open] dylidar->angle_min = %f", float_optvalue);
 
-  float_optvalue = 64.f;
-  float_optvalue = toml::find<float>(this->params_toml_, "dylidar", "range_max");
+  float_optvalue = toml::find_or<float>(this->params_toml_, "dylidar", "range_max", 64.f);
   this->lidar_ptr_->setlidaropt(LidarPropMaxRange, &float_optvalue, sizeof(float));
+  DEBUG("[Open] dylidar->range_max = %f", float_optvalue);
 
-  float_optvalue = 0.1f;
-  float_optvalue = toml::find<float>(this->params_toml_, "dylidar", "range_min");
+  float_optvalue = toml::find_or<float>(this->params_toml_, "dylidar", "range_min", 0.1f);
   this->lidar_ptr_->setlidaropt(LidarPropMinRange, &float_optvalue, sizeof(float));
+  DEBUG("[Open] dylidar->range_min = %f", float_optvalue);
 
+  this->frequency_ = toml::find_or<float>(this->params_toml_, "dylidar", "frequency", float(10.f));
   this->lidar_ptr_->setlidaropt(LidarPropScanFrequency, &this->frequency_, sizeof(float));
+  DEBUG("[Open] dylidar->frequency = %f", this->frequency_);
 
   if (!this->lidar_ptr_->initialize()) {
     ERROR(
       "Ydlidar %s failed:%s",
       this->state_msg_[SwitchState::open].c_str(), this->lidar_ptr_->DescribeError());
+    this->Close_();
     return false;
   }
   this->sensor_state_ = SwitchState::open;
@@ -203,8 +202,9 @@ bool cyberdog::sensor::YdlidarCarpo::Start_()
     return false;
   }
 
-  if (this->lidar_ptr_->turnOn()) {
+  if (!this->lidar_ptr_->turnOn()) {
     ERROR("Ydlidar turnOn failed:%s", this->lidar_ptr_->DescribeError());
+    this->Close_();
     return false;
   }
 
