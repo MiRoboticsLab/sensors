@@ -49,13 +49,9 @@ public:
   bool Start_() override;
   bool Stop_() override;
   bool Close_() override;
-  // explicit UltrasonicCarpo():cyberdog::common::CyberdogLogger(
-  // "cyberdog_ultrasonic"
-  // ){}
 
 private:
   void recv_callback(std::string & name, std::shared_ptr<ultrasonic_can> data);
-  void ultrasonic_pub_callback();
 
 private:
   std::map<SwitchState, std::string> state_msg_;                      // 状态消息
@@ -64,12 +60,8 @@ private:
   std::shared_ptr<sensor_msgs::msg::Range> ultrasonic_payload;
   bool opened_ = false;
   bool started_ = false;
-  std::mutex mtx;
-  std::thread ultrasonic_pub_thread;
   std::thread ultrasonic_pub_thread_simulator;
   void UpdateSimulationData();                                        // 更新模拟数据
-
-
   LOGGER_MINOR_INSTANCE("cyberdog_ultrasonic");
 };  // class UltrasonicCarpo
 }  // namespace sensor
