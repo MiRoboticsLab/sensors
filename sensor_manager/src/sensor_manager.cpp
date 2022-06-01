@@ -80,15 +80,21 @@ void cyberdog::sensor::SensorManager::Config()
 
   // tof
   INFO("tof Configuring beginning");
-  tof_publisher_ = node_ptr_->create_publisher<protocol::msg::MultipleTofPayload>(
-    "tof_payload", rclcpp::SystemDefaultsQoS());
+  head_tof_publisher_ = node_ptr_->create_publisher<protocol::msg::HeadTofPayload>(
+    "head_tof_payload", rclcpp::SystemDefaultsQoS());
+  rear_tof_publisher_ = node_ptr_->create_publisher<protocol::msg::RearTofPayload>(
+    "rear_tof_payload", rclcpp::SystemDefaultsQoS());
   std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::TofBase>> tof_classloader;
   tof_classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::TofBase>>(
     "cyberdog_tof", "cyberdog::sensor::TofBase");
   tof_ = tof_classloader->createSharedInstance("cyberdog::sensor::TofCarpo");
-  tof_->SetPayloadCallback(
+  tof_->SetHeadPayloadCallback(
     std::bind(
-      &SensorManager::tof_payload_callback, this,
+      &SensorManager::head_tof_payload_callback, this,
+      std::placeholders::_1));
+  tof_->SetRearPayloadCallback(
+    std::bind(
+      &SensorManager::rear_tof_payload_callback, this,
       std::placeholders::_1));
 
   INFO("sensor_manager Configuring,success");
@@ -190,8 +196,14 @@ void cyberdog::sensor::SensorManager::ultrasonic_payload_callback(
   ultrasonic_publisher_->publish(*msg);
 }
 
-void cyberdog::sensor::SensorManager::tof_payload_callback(
-  std::shared_ptr<protocol::msg::MultipleTofPayload> msg)
+void cyberdog::sensor::SensorManager::head_tof_payload_callback(
+  std::shared_ptr<protocol::msg::HeadTofPayload> msg)
 {
-  tof_publisher_->publish(*msg);
+  head_tof_publisher_->publish(*msg);
+}
+
+void cyberdog::sensor::SensorManager::rear_tof_payload_callback(
+  std::shared_ptr<protocol::msg::RearTofPayload> msg)
+{
+  rear_tof_publisher_->publish(*msg);
 }

@@ -196,7 +196,7 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
     if (payload_callback_ != nullptr) {
       payload_callback_(ultrasonic_payload);
       INFO(" publish ultrasonic payload succeed");
-    }else{
+    } else {
       ERROR(" publish ultrasonic payload failed");
     }
   } else if (name == "enable_off_ack") {

@@ -56,13 +56,13 @@ private:
   bool SingleOpen(uint8_t serial_number);
   bool SingleStop(uint8_t serial_number);
   bool SingleStart(uint8_t serial_number);
-  void tof_pub_callback();
   void head_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
   void rear_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
 
 private:
-  std::shared_ptr<protocol::msg::MultipleTofPayload> multiple_tof_payload;
-  std::thread tof_pub_thread;
+  std::shared_ptr<protocol::msg::HeadTofPayload> head_tof_payload;
+  std::shared_ptr<protocol::msg::RearTofPayload> rear_tof_payload;
+
   std::thread tof_pub_thread_simulator;
   void UpdateSimulationData();                                      // 更新模拟数据
 
