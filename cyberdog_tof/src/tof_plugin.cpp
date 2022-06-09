@@ -87,6 +87,7 @@ bool cyberdog::sensor::TofCarpo::Open_()
   } else {
     FATAL("head tofs opened failed");
   }
+  /*
   if (SingleOpen(protocol::msg::SingleTofPayload::REAR)) {
     INFO("rear tofs opened successfully");
   } else {
@@ -97,6 +98,8 @@ bool cyberdog::sensor::TofCarpo::Open_()
     "all tofs opened status = %d ",
     static_cast<int>(opened_));
   return opened_;
+  */
+  return tof_opened_head;
 }
 
 
@@ -107,14 +110,17 @@ bool cyberdog::sensor::TofCarpo::Start_()
   } else {
     FATAL("head tofs started failed");
   }
+  /*
   if (SingleStart(protocol::msg::SingleTofPayload::REAR)) {
     INFO("rear tofs started successfully");
   } else {
     FATAL("rear tofs started failed");
   }
   started_ = tof_started_head && tof_started_rear;
-
   return started_;
+  */
+  return tof_started_head;
+
 }
 
 bool cyberdog::sensor::TofCarpo::Stop_()
@@ -124,6 +130,7 @@ bool cyberdog::sensor::TofCarpo::Stop_()
   } else {
     FATAL("head tofs stoped failed");
   }
+  /*
   if (SingleStop(protocol::msg::SingleTofPayload::REAR)) {
     INFO("rear tofs stoped successfully");
   } else {
@@ -131,6 +138,8 @@ bool cyberdog::sensor::TofCarpo::Stop_()
   }
   stopped_ = tof_started_head || tof_started_rear;
   return !stopped_;
+  */
+  return !tof_started_head;
 }
 
 bool cyberdog::sensor::TofCarpo::Close_()
