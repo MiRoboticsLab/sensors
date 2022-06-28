@@ -171,6 +171,8 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
   std::string & name,
   std::shared_ptr<cyberdog::sensor::ultrasonic_can> data)
 {
+  INFO_STREAM("!!!!!! Ultrasonic callback !!!!!!! ");
+  INFO_STREAM("    name ==   " << name);
   ultrasonic_data_ = data;
   if (name == "enable_on_ack") {
     INFO(" got %s callback", name.c_str());
@@ -180,8 +182,12 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
     ultrasonic_can_->LINK_VAR(ultrasonic_can_->GetData()->ultrasonic_data_intensity);
     ultrasonic_can_->LINK_VAR(ultrasonic_can_->GetData()->ultrasonic_data_clock);
 
-  } else if (name == "ultrasonic_data_clock") {
+  } else if (name == "enable_off_ack") {
     INFO(" got %s callback", name.c_str());
+    opened_ = false;
+    started_ = false;
+  } else {
+    // INFO(" got %s callback", name.c_str());
     started_ = true;
     struct timespec time_stu;
     clock_gettime(CLOCK_REALTIME, &time_stu);
@@ -199,10 +205,6 @@ void cyberdog::sensor::UltrasonicCarpo::recv_callback(
     } else {
       ERROR(" publish ultrasonic payload failed");
     }
-  } else if (name == "enable_off_ack") {
-    INFO(" got %s callback", name.c_str());
-    opened_ = false;
-    started_ = false;
   }
 }
 

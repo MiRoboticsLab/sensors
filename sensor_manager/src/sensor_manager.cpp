@@ -92,7 +92,7 @@ void cyberdog::sensor::SensorManager::Config()
     std::bind(
       &SensorManager::head_tof_payload_callback, this,
       std::placeholders::_1));
-  tof_->SetRearPayloadCallback(
+  tof_->SetRearPayloadCallback( 
     std::bind(
       &SensorManager::rear_tof_payload_callback, this,
       std::placeholders::_1));
@@ -122,7 +122,7 @@ bool cyberdog::sensor::SensorManager::Init()
     tof_->Init(is_simulator("tof")) && tof_->Open() &&
     lidar_->Init(is_simulator("lidar")) && lidar_->Open()
     */
-    gps_->Init(true) && gps_->Open() &&
+    gps_->Init(false) && gps_->Open() &&
     ultrasonic_->Init(false) && ultrasonic_->Open() &&
     tof_->Init(false) && tof_->Open() &&
     lidar_->Init(true) && lidar_->Open()

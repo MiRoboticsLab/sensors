@@ -87,19 +87,18 @@ bool cyberdog::sensor::TofCarpo::Open_()
   } else {
     FATAL("head tofs opened failed");
   }
-  /*
+
   if (SingleOpen(protocol::msg::SingleTofPayload::REAR)) {
     INFO("rear tofs opened successfully");
   } else {
     FATAL("rear tofs opened failed");
   }
+
   opened_ = tof_opened_head && tof_opened_rear;
   INFO(
     "all tofs opened status = %d ",
     static_cast<int>(opened_));
   return opened_;
-  */
-  return tof_opened_head;
 }
 
 
@@ -110,7 +109,7 @@ bool cyberdog::sensor::TofCarpo::Start_()
   } else {
     FATAL("head tofs started failed");
   }
-  /*
+
   if (SingleStart(protocol::msg::SingleTofPayload::REAR)) {
     INFO("rear tofs started successfully");
   } else {
@@ -118,9 +117,6 @@ bool cyberdog::sensor::TofCarpo::Start_()
   }
   started_ = tof_started_head && tof_started_rear;
   return started_;
-  */
-  return tof_started_head;
-
 }
 
 bool cyberdog::sensor::TofCarpo::Stop_()
@@ -130,7 +126,6 @@ bool cyberdog::sensor::TofCarpo::Stop_()
   } else {
     FATAL("head tofs stoped failed");
   }
-  /*
   if (SingleStop(protocol::msg::SingleTofPayload::REAR)) {
     INFO("rear tofs stoped successfully");
   } else {
@@ -138,8 +133,6 @@ bool cyberdog::sensor::TofCarpo::Stop_()
   }
   stopped_ = tof_started_head || tof_started_rear;
   return !stopped_;
-  */
-  return !tof_started_head;
 }
 
 bool cyberdog::sensor::TofCarpo::Close_()
@@ -169,9 +162,9 @@ bool cyberdog::sensor::TofCarpo::SingleStart(uint8_t serial_number)
             difftime(time(nullptr), time_started_delay));
         }
         if (tof_started_head == false) {
-          FATAL("head tofs  Start failed ");
+          FATAL("head tofs  started failed ");
         } else {
-          INFO("head tofs  Start successfully ");
+          INFO("head tofs  started successfully ");
         }
         return tof_started_head;
       }
@@ -187,9 +180,9 @@ bool cyberdog::sensor::TofCarpo::SingleStart(uint8_t serial_number)
             difftime(time(nullptr), time_started_delay));
         }
         if (tof_started_rear == false) {
-          FATAL("rear tofs  Start failed ");
+          FATAL("rear tofs  started failed ");
         } else {
-          INFO("rear tofs  Start successfully ");
+          INFO("rear tofs  started successfully ");
         }
         return tof_started_rear;
       }
@@ -274,7 +267,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           "enable_on", std::vector<uint8_t>{});
         tof_can_head->LINK_VAR(tof_can_head->GetData()->enable_on_ack);
         time_t time_head = time(nullptr);
-        while (tof_opened_head == false && difftime(time(nullptr), time_head) < 2.0f) {
+        while (tof_opened_head == false && difftime(time(nullptr), time_head) < 4.0f) {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
           // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"),
           // "difftime = %2f ",difftime(time(nullptr), time_head));
@@ -306,7 +299,7 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           "enable_on", std::vector<uint8_t>{});
         tof_can_rear->LINK_VAR(tof_can_rear->GetData()->enable_on_ack);
         time_t time_rear = time(nullptr);
-        while (tof_opened_rear == false && difftime(time(nullptr), time_rear) < 2.0f) {
+        while (tof_opened_rear == false && difftime(time(nullptr), time_rear) < 4.0f) {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
           // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"),
           // "difftime = %2f ",difftime(time(nullptr), time_rear));
@@ -326,20 +319,22 @@ void cyberdog::sensor::TofCarpo::head_callback(
   std::string & name,
   std::shared_ptr<cyberdog::sensor::tof_can> data)
 {
+  INFO_STREAM("~~~~ head callback ~~~~~ ");
+  INFO_STREAM("    name ==   " << name);
   if (name == "enable_on_ack") {
-    INFO_STREAM("I heard name head tofs " << name);
+    INFO_STREAM(" got head tofs callback " << name);
     tof_opened_head = true;
     tof_can_head->BREAK_VAR(tof_can_head->GetData()->enable_on_ack);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->left_tof_data_array);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->left_tof_data_clock);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->right_tof_data_array);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->right_tof_data_clock);
-  } else if (name == "right_tof_data_clock") {
+  } else if (name == "enable_off_ack") {
+    INFO_STREAM("got head tofs callback" << name);
+    tof_opened_head = false;
+    tof_started_head = false;
+  } else {
     tof_started_head = true;
-    INFO_STREAM("head right_tof_data_array " << static_cast<int>(data->right_tof_data_array[0]));
-    INFO_STREAM("head left_tof_data_array " << static_cast<int>(data->left_tof_data_array[0]));
-    INFO_STREAM("head right_tof_data_clock = " << data->right_tof_data_clock);
-    INFO_STREAM("head left_tof_data_clock = " << data->left_tof_data_clock);
     const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
     std::vector<float> obj_left;
     std::vector<float> obj_right;
@@ -379,10 +374,6 @@ void cyberdog::sensor::TofCarpo::head_callback(
     } else {
       ERROR("head tofs published unsuccessfully");
     }
-  } else if (name == "enable_off_ack") {
-    INFO_STREAM("I heard name head tofs" << name);
-    tof_opened_head = false;
-    tof_started_head = false;
   }
 }
 
@@ -390,20 +381,22 @@ void cyberdog::sensor::TofCarpo::rear_callback(
   std::string & name,
   std::shared_ptr<cyberdog::sensor::tof_can> data)
 {
+  INFO_STREAM("+++++ rear callback ++++++ ");
+  INFO_STREAM("    name ==   " << name);
   if (name == "enable_on_ack") {
-    INFO_STREAM("I heard name rear tofs " << name);
+    INFO_STREAM(" got rear tofs callback" << name);
     tof_opened_rear = true;
     tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->enable_on_ack);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->left_tof_data_array);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->left_tof_data_clock);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->right_tof_data_array);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->right_tof_data_clock);
-  } else if (name == "right_tof_data_clock") {
+  } else if (name == "enable_off_ack") {
+    INFO_STREAM("got rear tofs callback" << name);
+    tof_opened_rear = false;
+    tof_started_rear = false;
+  } else {
     tof_started_rear = true;
-    INFO_STREAM("rear right_tof_data_array " << static_cast<int>(data->right_tof_data_array[0]));
-    INFO_STREAM("rear left_tof_data_array " << static_cast<int>(data->left_tof_data_array[0]));
-    INFO_STREAM("rear right_tof_data_clock = " << data->right_tof_data_clock);
-    INFO_STREAM("rear left_tof_data_clock = " << data->left_tof_data_clock);
     const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
     std::vector<float> obj_left;
     std::vector<float> obj_right;
@@ -443,10 +436,6 @@ void cyberdog::sensor::TofCarpo::rear_callback(
     } else {
       ERROR("rear tofs published unsuccessfully");
     }
-  } else if (name == "enable_off_ack") {
-    INFO_STREAM("I heard name rear tofs" << name);
-    tof_opened_rear = false;
-    tof_started_rear = false;
   }
 }
 
