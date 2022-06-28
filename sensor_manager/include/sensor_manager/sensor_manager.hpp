@@ -29,7 +29,8 @@
 #include "ultrasonic_base/ultrasonic_base.hpp"
 #include "tof_base/tof_base.hpp"
 #include "protocol/msg/single_tof_payload.hpp"
-#include "protocol/msg/multiple_tof_payload.hpp"
+#include "protocol/msg/head_tof_payload.hpp"
+#include "protocol/msg/rear_tof_payload.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 namespace cyberdog
@@ -78,8 +79,10 @@ private:
   void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
 
   std::shared_ptr<cyberdog::sensor::TofBase> tof_;
-  rclcpp::Publisher<protocol::msg::MultipleTofPayload>::SharedPtr tof_publisher_;
-  void tof_payload_callback(std::shared_ptr<protocol::msg::MultipleTofPayload> msg);
+  rclcpp::Publisher<protocol::msg::HeadTofPayload>::SharedPtr head_tof_publisher_;
+  void head_tof_payload_callback(std::shared_ptr<protocol::msg::HeadTofPayload> msg);
+  rclcpp::Publisher<protocol::msg::RearTofPayload>::SharedPtr rear_tof_publisher_;
+  void rear_tof_payload_callback(std::shared_ptr<protocol::msg::RearTofPayload> msg);
 };  // class SensorManager
 }  // namespace sensor
 }  // namespace cyberdog
