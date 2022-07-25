@@ -71,6 +71,7 @@ private:
   bool started_;
   bool closed_;
   bool stopped_;
+  const int TOFOFFSET = 50;
 
 
   std::shared_ptr<EVM::Protocol<tof_can>> tof_can_head;
