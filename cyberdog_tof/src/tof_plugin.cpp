@@ -340,10 +340,10 @@ void cyberdog::sensor::TofCarpo::head_callback(
     std::vector<float> obj_right;
     for (size_t i = 0; i < datanum; i++) {
       obj_left.push_back(
-        (data->left_tof_data_array[i] * 2.0f + 150) *
+        (data->left_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
       obj_right.push_back(
-        (data->right_tof_data_array[i] * 2.0f + 150) *
+        (data->right_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
     }
     auto tof_payload_left = std::make_shared<protocol::msg::SingleTofPayload>();
@@ -402,10 +402,10 @@ void cyberdog::sensor::TofCarpo::rear_callback(
     std::vector<float> obj_right;
     for (size_t i = 0; i < datanum; i++) {
       obj_left.push_back(
-        (data->left_tof_data_array[i] * 2.0f + 150) *
+        (data->left_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
       obj_right.push_back(
-        (data->right_tof_data_array[i] * 2.0f + 150) *
+        (data->right_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
     }
     auto tof_payload_left = std::make_shared<protocol::msg::SingleTofPayload>();
