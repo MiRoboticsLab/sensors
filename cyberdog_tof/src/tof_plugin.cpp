@@ -201,8 +201,10 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
     case protocol::msg::SingleTofPayload::HEAD: {
         tof_can_head->BREAK_VAR(tof_can_head->GetData()->left_tof_data_array);
         tof_can_head->BREAK_VAR(tof_can_head->GetData()->left_tof_data_clock);
+        tof_can_head->BREAK_VAR(tof_can_head->GetData()->left_tof_intensity_array);
         tof_can_head->BREAK_VAR(tof_can_head->GetData()->right_tof_data_array);
         tof_can_head->BREAK_VAR(tof_can_head->GetData()->right_tof_data_clock);
+        tof_can_head->BREAK_VAR(tof_can_head->GetData()->right_tof_intensity_array);
         tof_can_head->LINK_VAR(tof_can_head->GetData()->enable_off_ack);
         tof_can_head->Operate(
           "enable_off", std::vector<uint8_t>{});
@@ -221,8 +223,10 @@ bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
     case protocol::msg::SingleTofPayload::LEFT_REAR: {
         tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->left_tof_data_array);
         tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->left_tof_data_clock);
+        tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->left_tof_intensity_array);
         tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->right_tof_data_array);
         tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->right_tof_data_clock);
+        tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->right_tof_intensity_array);
         tof_can_rear->LINK_VAR(tof_can_rear->GetData()->enable_off_ack);
         tof_can_rear->Operate(
           "enable_off", std::vector<uint8_t>{});
@@ -327,8 +331,10 @@ void cyberdog::sensor::TofCarpo::head_callback(
     tof_can_head->BREAK_VAR(tof_can_head->GetData()->enable_on_ack);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->left_tof_data_array);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->left_tof_data_clock);
+    tof_can_head->LINK_VAR(tof_can_head->GetData()->left_tof_intensity_array);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->right_tof_data_array);
     tof_can_head->LINK_VAR(tof_can_head->GetData()->right_tof_data_clock);
+    tof_can_head->LINK_VAR(tof_can_head->GetData()->right_tof_intensity_array);
   } else if (name == "enable_off_ack") {
     INFO_STREAM("got head tofs callback" << name);
     tof_opened_head = false;
@@ -336,15 +342,21 @@ void cyberdog::sensor::TofCarpo::head_callback(
   } else {
     tof_started_head = true;
     const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
-    std::vector<float> obj_left;
-    std::vector<float> obj_right;
+    std::vector<float> obj_left_data;
+    std::vector<float> obj_right_data;
+    std::vector<float> obj_left_intensity;
+    std::vector<float> obj_right_intensity;
     for (size_t i = 0; i < datanum; i++) {
-      obj_left.push_back(
+      obj_left_data.push_back(
         (data->left_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
-      obj_right.push_back(
+      obj_left_intensity.push_back(
+        data->left_tof_intensity_array[i]);
+      obj_right_data.push_back(
         (data->right_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
+      obj_right_intensity.push_back(
+        data->right_tof_intensity_array[i]);
     }
     auto tof_payload_left = std::make_shared<protocol::msg::SingleTofPayload>();
     auto tof_payload_right = std::make_shared<protocol::msg::SingleTofPayload>();
@@ -356,7 +368,8 @@ void cyberdog::sensor::TofCarpo::head_callback(
     tof_payload_left->header.stamp.nanosec = time_stu.tv_nsec;
     tof_payload_left->header.stamp.sec = time_stu.tv_sec;
     tof_payload_left->tof_position = protocol::msg::SingleTofPayload::LEFT_HEAD;
-    tof_payload_left->data = obj_left;
+    tof_payload_left->data = obj_left_data;
+    tof_payload_left->intensity = obj_left_intensity;
     tof_payload_left->data_available = tof_started_head;
     head_tof_payload->left_head = *tof_payload_left;
     // right head
@@ -364,7 +377,8 @@ void cyberdog::sensor::TofCarpo::head_callback(
     tof_payload_right->header.stamp.nanosec = time_stu.tv_nsec;
     tof_payload_right->header.stamp.sec = time_stu.tv_sec;
     tof_payload_right->tof_position = protocol::msg::SingleTofPayload::RIGHT_HEAD;
-    tof_payload_right->data = obj_right;
+    tof_payload_right->data = obj_right_data;
+    tof_payload_right->intensity = obj_right_intensity;
     tof_payload_right->data_available = tof_started_head;
     head_tof_payload->right_head = *tof_payload_right;
     // publish msg
@@ -389,8 +403,11 @@ void cyberdog::sensor::TofCarpo::rear_callback(
     tof_can_rear->BREAK_VAR(tof_can_rear->GetData()->enable_on_ack);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->left_tof_data_array);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->left_tof_data_clock);
+    tof_can_rear->LINK_VAR(tof_can_rear->GetData()->left_tof_intensity_array);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->right_tof_data_array);
     tof_can_rear->LINK_VAR(tof_can_rear->GetData()->right_tof_data_clock);
+    tof_can_rear->LINK_VAR(tof_can_rear->GetData()->right_tof_intensity_array);
+
   } else if (name == "enable_off_ack") {
     INFO_STREAM("got rear tofs callback" << name);
     tof_opened_rear = false;
@@ -398,15 +415,21 @@ void cyberdog::sensor::TofCarpo::rear_callback(
   } else {
     tof_started_rear = true;
     const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
-    std::vector<float> obj_left;
-    std::vector<float> obj_right;
+    std::vector<float> obj_left_data;
+    std::vector<float> obj_right_data;
+    std::vector<float> obj_left_intensity;
+    std::vector<float> obj_right_intensity;
     for (size_t i = 0; i < datanum; i++) {
-      obj_left.push_back(
+      obj_left_data.push_back(
         (data->left_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
-      obj_right.push_back(
+      obj_left_intensity.push_back(
+        data->left_tof_intensity_array[i]);
+      obj_right_data.push_back(
         (data->right_tof_data_array[i] * 2.0f + TOFOFFSET) *
         protocol::msg::SingleTofPayload::SCALE_FACTOR);
+      obj_right_intensity.push_back(
+        data->right_tof_intensity_array[i]);
     }
     auto tof_payload_left = std::make_shared<protocol::msg::SingleTofPayload>();
     auto tof_payload_right = std::make_shared<protocol::msg::SingleTofPayload>();
@@ -418,7 +441,8 @@ void cyberdog::sensor::TofCarpo::rear_callback(
     tof_payload_left->header.stamp.nanosec = time_stu.tv_nsec;
     tof_payload_left->header.stamp.sec = time_stu.tv_sec;
     tof_payload_left->tof_position = protocol::msg::SingleTofPayload::LEFT_REAR;
-    tof_payload_left->data = obj_left;
+    tof_payload_left->data = obj_left_data;
+    tof_payload_left->intensity = obj_left_intensity;
     tof_payload_left->data_available = tof_started_rear;
     rear_tof_payload->left_rear = *tof_payload_left;
     // right rear
@@ -426,7 +450,8 @@ void cyberdog::sensor::TofCarpo::rear_callback(
     tof_payload_right->header.stamp.nanosec = time_stu.tv_nsec;
     tof_payload_right->header.stamp.sec = time_stu.tv_sec;
     tof_payload_right->tof_position = protocol::msg::SingleTofPayload::RIGHT_REAR;
-    tof_payload_right->data = obj_right;
+    tof_payload_right->data = obj_right_data;
+    tof_payload_right->intensity = obj_right_intensity;
     tof_payload_right->data_available = tof_started_rear;
     rear_tof_payload->right_rear = *tof_payload_right;
     // publish msg

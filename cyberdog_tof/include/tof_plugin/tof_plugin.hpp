@@ -32,8 +32,10 @@ namespace sensor
 typedef struct _tof_can
 {
   uint8_t left_tof_data_array[64];
+  uint8_t left_tof_intensity_array[64];
   uint64_t left_tof_data_clock;
   uint8_t right_tof_data_array[64];
+  uint8_t right_tof_intensity_array[64];
   uint64_t right_tof_data_clock;
   uint8_t enable_on_ack;
   uint8_t enable_off_ack;
