@@ -97,6 +97,13 @@ void cyberdog::sensor::SensorManager::Config()
       &SensorManager::rear_tof_payload_callback, this,
       std::placeholders::_1));
 
+
+  sensor_operation_srv_ = node_ptr_->create_service<protocol::srv::SensorOperation>(
+    "sensor_operation",
+    std::bind(
+      &SensorManager::sensor_operation, this, std::placeholders::_1,
+      std::placeholders::_2));
+
   INFO("sensor_manager Configuring,success");
 }
 
@@ -146,6 +153,34 @@ bool cyberdog::sensor::SensorManager::IsStateValid()
 {
   // check state from behavior tree
   return true;
+}
+
+template<typename T>
+bool cyberdog::sensor::SensorManager::SensorOperation(
+  T elem, uint8_t oper_id)
+{
+  bool result = false;
+  switch (oper_id) {
+    case protocol::srv::SensorOperation::Request::OPR_OPEN:
+      {
+        result = elem->Open();
+      } break;
+    case protocol::srv::SensorOperation::Request::OPR_START:
+      {
+        result = elem->Start();
+      } break;
+    case protocol::srv::SensorOperation::Request::OPR_STOP:
+      {
+        result = elem->Stop();
+      } break;
+    case protocol::srv::SensorOperation::Request::OPR_CLOSE:
+      {
+        result = elem->Close();
+      } break;
+    default:
+      break;
+  }
+  return result;
 }
 
 void cyberdog::sensor::SensorManager::OnError()
@@ -200,4 +235,78 @@ void cyberdog::sensor::SensorManager::rear_tof_payload_callback(
   std::shared_ptr<protocol::msg::RearTofPayload> msg)
 {
   rear_tof_publisher_->publish(*msg);
+}
+
+void cyberdog::sensor::SensorManager::sensor_operation(
+  const protocol::srv::SensorOperation::Request::SharedPtr request,
+  protocol::srv::SensorOperation::Response::SharedPtr response)
+{
+  auto sensor_tuple = std::make_tuple(lidar_, ultrasonic_, tof_, gps_);
+  response->success = true;
+  switch (request->sensor_id) {
+    case protocol::srv::SensorOperation::Request::ID_ALL:
+      {
+        response->success &=
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
+          1>(sensor_tuple), request->operation);
+        response->success &=
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
+          1>(sensor_tuple), request->operation);
+        response->success &=
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_TOF -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_TOF -
+          1>(sensor_tuple), request->operation);
+        response->success &=
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_GPS -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_GPS -
+          1>(sensor_tuple), request->operation);
+      } break;
+
+    case protocol::srv::SensorOperation::Request::ID_LIDAR:
+      {
+        response->success =
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
+          1>(sensor_tuple), request->operation);
+      } break;
+
+    case protocol::srv::SensorOperation::Request::ID_ULTRA:
+      {
+        response->success =
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
+          1>(sensor_tuple), request->operation);
+      } break;
+
+    case protocol::srv::SensorOperation::Request::ID_TOF:
+      {
+        response->success =
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_TOF -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_TOF -
+          1>(sensor_tuple), request->operation);
+      } break;
+
+    case protocol::srv::SensorOperation::Request::ID_GPS:
+      {
+        response->success =
+          SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_GPS -
+            1>(sensor_tuple))>(
+          std::get<protocol::srv::SensorOperation::Request::ID_GPS -
+          1>(sensor_tuple), request->operation);
+      } break;
+
+    default:
+      {
+        response->success = false;
+      } break;
+  }
 }
