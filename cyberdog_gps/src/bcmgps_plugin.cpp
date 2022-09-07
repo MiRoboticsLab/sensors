@@ -74,26 +74,50 @@ bool cyberdog::sensor::GpsCarpo::Open_()
     std::bind(
       &GpsCarpo::BCMGPS_Payload_callback, this,
       std::placeholders::_1));
-  return bcmgps_->IsOpened();
+  bool is_open = bcmgps_->IsOpened();
+  if (is_open == true) {
+    INFO("[cyberdog_gps] gps open successfully");
+  } else {
+    INFO("[cyberdog_gps] gps open failed");
+  }
+  return is_open;
 }
 
 bool cyberdog::sensor::GpsCarpo::Start_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Start();}
-  return bcmgps_->IsStarted();
+  bool is_start = bcmgps_->IsStarted();
+  if (is_start == true) {
+    INFO("[cyberdog_gps] gps start successfully");
+  } else {
+    INFO("[cyberdog_gps] gps start failed");
+  }
+
+  return is_start;
 }
 
 bool cyberdog::sensor::GpsCarpo::Stop_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Stop();}
-  return bcmgps_->IsStarted();
+  bool is_stop = !(bcmgps_->IsStarted());
+  if (is_stop == true) {
+    INFO("[cyberdog_gps] gps stop successfully");
+  } else {
+    INFO("[cyberdog_gps] gps stop failed");
+  }
+  return is_stop;
 }
 
 bool cyberdog::sensor::GpsCarpo::Close_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Close();}
-  bcmgps_ = nullptr;
-  return bcmgps_->IsOpened();
+  bool is_close = !(bcmgps_->IsOpened());
+  if (is_close == true) {
+    INFO("[cyberdog_gps] gps close successfully");
+  } else {
+    INFO("[cyberdog_gps] gps close failed");
+  }
+  return is_close;
 }
 
 void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(

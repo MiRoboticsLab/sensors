@@ -42,7 +42,8 @@ bcm_gps::GPS::GPS(PAYLOAD_callback PAYLOAD_cb, NMEA_callback NMEA_cb)
 
 bcm_gps::GPS::~GPS()
 {
-  Close();
+  // Close();
+  INFO("[cyberdog_gps] destroy GPS");
 }
 
 bool bcm_gps::GPS::Open()
@@ -73,7 +74,7 @@ void bcm_gps::GPS::Start()
 void bcm_gps::GPS::Stop()
 {
   if (ready_ == false) {
-    ERROR("[cyberdog_gps]: GPS module not ready yet");
+    ERROR("[cyberdog_gps][Stop]: GPS module not ready yet");
     return;
   }
   if (start_ == false) {return;}
