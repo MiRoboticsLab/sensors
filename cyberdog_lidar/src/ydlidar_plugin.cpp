@@ -70,9 +70,11 @@ bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
           case SwitchState::close:
             break;
           case SwitchState::start:
-            this->update_data_thread_ptr_ = std::make_shared<std::thread>(
-              std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateSimulationData, this));
-            this->update_data_thread_ptr_->detach();
+            if (this->update_data_thread_ptr_ == nullptr) {
+              this->update_data_thread_ptr_ = std::make_shared<std::thread>(
+                std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateSimulationData, this));
+              this->update_data_thread_ptr_->detach();
+            }
             break;
           default:
             WARN("Ydlidar not recognized state");
@@ -215,9 +217,11 @@ bool cyberdog::sensor::YdlidarCarpo::Start_()
     return false;
   }
 
-  this->update_data_thread_ptr_ = std::make_shared<std::thread>(
-    std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateData, this));
-  this->update_data_thread_ptr_->detach();
+  if (this->update_data_thread_ptr_ == nullptr) {
+    this->update_data_thread_ptr_ = std::make_shared<std::thread>(
+      std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateData, this));
+    this->update_data_thread_ptr_->detach();
+  }
 
   this->sensor_state_ = SwitchState::start;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
