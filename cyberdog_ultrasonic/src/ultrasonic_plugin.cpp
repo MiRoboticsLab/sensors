@@ -113,6 +113,9 @@ bool cyberdog::sensor::UltrasonicCarpo::Open_()
 
 bool cyberdog::sensor::UltrasonicCarpo::Start_()
 {
+  if (opened_ == false) {
+    Open_();
+  }
   time_t time_started_delay = time(nullptr);
   while (started_ == false && difftime(time(nullptr), time_started_delay) < 2.0f) {
     std::this_thread::sleep_for(std::chrono::microseconds(30000));
@@ -130,7 +133,6 @@ bool cyberdog::sensor::UltrasonicCarpo::Start_()
 
 bool cyberdog::sensor::UltrasonicCarpo::Stop_()
 {
-  std::this_thread::sleep_for(std::chrono::microseconds(10000000));
   if (opened_ == false || started_ == false) {
     ERROR(" The ultrasonic sensor is not on, so the close fails");
     return false;
@@ -159,10 +161,10 @@ bool cyberdog::sensor::UltrasonicCarpo::Stop_()
 bool cyberdog::sensor::UltrasonicCarpo::Close_()
 {
   if (opened_ == true) {
-    ERROR(" The ultrasonic stop fails");
+    ERROR(" The ultrasonic closed fails");
     return false;
   } else {
-    INFO(" ultrasonic Stoped successfully");
+    INFO(" ultrasonic closed successfully");
   }
   return !opened_;
 }
