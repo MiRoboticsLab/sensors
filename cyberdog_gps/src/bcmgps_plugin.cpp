@@ -69,12 +69,16 @@ bool cyberdog::sensor::GpsCarpo::Init(bool simulator)
 
 bool cyberdog::sensor::GpsCarpo::Open_()
 {
+  if (is_open == true) {
+    INFO("[cyberdog_gps] gps open successfully");
+    return is_open;
+  }
   bcmgps_ = std::make_shared<bcm_gps::GPS>();
   bcmgps_->SetCallback(
     std::bind(
       &GpsCarpo::BCMGPS_Payload_callback, this,
       std::placeholders::_1));
-  bool is_open = bcmgps_->IsOpened();
+  is_open = bcmgps_->IsOpened();
   if (is_open == true) {
     INFO("[cyberdog_gps] gps open successfully");
   } else {
@@ -99,7 +103,7 @@ bool cyberdog::sensor::GpsCarpo::Start_()
 bool cyberdog::sensor::GpsCarpo::Stop_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Stop();}
-  bool is_stop = !(bcmgps_->IsStarted());
+  is_stop = !(bcmgps_->IsStarted());
   if (is_stop == true) {
     INFO("[cyberdog_gps] gps stop successfully");
   } else {
@@ -110,6 +114,10 @@ bool cyberdog::sensor::GpsCarpo::Stop_()
 
 bool cyberdog::sensor::GpsCarpo::Close_()
 {
+  Stop_();
+  INFO("[cyberdog_gps] gps close successfully");
+  return is_stop;
+  /*
   if (bcmgps_ != nullptr) {bcmgps_->Close();}
   bool is_close = !(bcmgps_->IsOpened());
   if (is_close == true) {
@@ -118,6 +126,7 @@ bool cyberdog::sensor::GpsCarpo::Close_()
     INFO("[cyberdog_gps] gps close failed");
   }
   return is_close;
+  */
 }
 
 void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(
