@@ -32,6 +32,7 @@
 #include "protocol/msg/head_tof_payload.hpp"
 #include "protocol/msg/rear_tof_payload.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "protocol/srv/sensor_operation.hpp"
 
 namespace cyberdog
 {
@@ -60,6 +61,9 @@ public:
 private:
   bool IsStateValid();
 
+  template<typename T>
+  bool SensorOperation(T elem, uint8_t oper_id);
+
 private:
   std::string name_;
   std::vector<std::string> simulator_;
@@ -83,6 +87,11 @@ private:
   void head_tof_payload_callback(std::shared_ptr<protocol::msg::HeadTofPayload> msg);
   rclcpp::Publisher<protocol::msg::RearTofPayload>::SharedPtr rear_tof_publisher_;
   void rear_tof_payload_callback(std::shared_ptr<protocol::msg::RearTofPayload> msg);
+
+  rclcpp::Service<protocol::srv::SensorOperation>::SharedPtr sensor_operation_srv_;
+  void sensor_operation(
+    const protocol::srv::SensorOperation::Request::SharedPtr request,
+    protocol::srv::SensorOperation::Response::SharedPtr response);
 };  // class SensorManager
 }  // namespace sensor
 }  // namespace cyberdog
