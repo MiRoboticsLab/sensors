@@ -119,7 +119,7 @@ bool cyberdog::sensor::SensorManager::Init()
     gps_->Init(1) && gps_->Open() &&
     ultrasonic_->Init(1) && ultrasonic_->Open() &&
     tof_->Init(is_simulator("tof")) && tof_->Open() &&
-    lidar_->Init(1) && lidar_->Open()
+    lidar_->Init(is_simulator("tof")) && lidar_->Open()
   );
 }
 
