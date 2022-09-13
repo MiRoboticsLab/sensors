@@ -16,6 +16,7 @@
   <depend>ament_index_cpp</depend>
   <depend>bream_vendor</depend>
   <depend>protocol</depend>
+  <depend>filters</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

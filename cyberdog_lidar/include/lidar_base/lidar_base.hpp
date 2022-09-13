@@ -15,10 +15,10 @@
 #ifndef LIDAR_BASE__LIDAR_BASE_HPP_
 #define LIDAR_BASE__LIDAR_BASE_HPP_
 
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <cyberdog_common/cyberdog_log.hpp>
 #include <memory>
 #include <functional>
-#include "sensor_msgs/msg/laser_scan.hpp"
-#include "cyberdog_common/cyberdog_log.hpp"
 
 namespace cyberdog
 {

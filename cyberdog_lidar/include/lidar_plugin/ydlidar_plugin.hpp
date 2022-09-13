@@ -15,14 +15,18 @@
 #ifndef LIDAR_PLUGIN__YDLIDAR_PLUGIN_HPP_
 #define LIDAR_PLUGIN__YDLIDAR_PLUGIN_HPP_
 
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <filters/filter_chain.hpp>
+#include <cyberdog_common/cyberdog_log.hpp>
+#include <cyberdog_common/cyberdog_toml.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <src/CYdLidar.h>
+
 #include <memory>
 #include <thread>
 #include <string>
 #include <map>
-#include "src/CYdLidar.h"
-#include "cyberdog_common/cyberdog_log.hpp"
-#include "cyberdog_common/cyberdog_toml.hpp"
-#include "ament_index_cpp/get_package_share_directory.hpp"
+
 #include "lidar_base/lidar_base.hpp"
 
 namespace cyberdog
@@ -33,6 +37,7 @@ class YdlidarCarpo : public cyberdog::sensor::LidarBase
 {
   using SwitchState = enum {open = 0, start, stop, close, };          // [类型]切换状态
   using ScanMsg = sensor_msgs::msg::LaserScan;                        // [topic 类型]激光数据
+  using Filter = filters::FilterChain<ScanMsg>;                       // 过滤激光数据
 
 public:
   bool Init(bool simulator = false) override;
@@ -45,7 +50,10 @@ private:
   std::atomic<SwitchState> sensor_state_ {SwitchState::close};        // node 状态
   std::shared_ptr<std::thread> update_data_thread_ptr_ {nullptr};     // 更新数据线程
   std::shared_ptr<CYdLidar> lidar_ptr_ {nullptr};                     // SDK雷达对象
-  std::shared_ptr<ScanMsg> scan_ptr_ {nullptr};                       // 激光数据
+  ScanMsg raw_scan_;                                                  // 原始激光数据
+  ScanMsg filter_scan_;                                               // 过滤激光数据
+  bool filter_ {false};                                               // 是否过滤激光数据
+  std::shared_ptr<Filter> filter_ptr_ {nullptr};                      // 激光过滤器
 
 private:
   bool Open_() override;
