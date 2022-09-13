@@ -50,11 +50,12 @@ bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
     ERROR("Params config file is not in toml format");
     return false;
   }
-
-  this->scan_ptr_ = std::make_shared<ScanMsg>();
-  this->scan_ptr_->header.frame_id = toml::find_or(
+  this->filter_ = toml::find_or(
+    this->params_toml_, "dylidar", "filter", false);
+  this->filter_ptr_ = std::make_shared<Filter>("sensor_msgs::msg::LaserScan");
+  this->raw_scan_.header.frame_id = toml::find_or(
     this->params_toml_, "dylidar", "frame_id", "laser_frame");
-  INFO("this->scan_ptr_->header.frame_id = %s", this->scan_ptr_->header.frame_id.c_str());
+  INFO("this->raw_scan_.header.frame_id = %s", this->raw_scan_.header.frame_id.c_str());
 
   if (!simulator) {
     this->Open = std::bind(&cyberdog::sensor::YdlidarCarpo::Open_, this);
@@ -263,30 +264,34 @@ void cyberdog::sensor::YdlidarCarpo::UpdateData()
       continue;
     }
     if (this->lidar_ptr_->doProcessSimple(this->scan_sdk)) {
-      this->scan_ptr_->header.stamp.sec = RCL_NS_TO_S(this->scan_sdk.stamp);
-      this->scan_ptr_->header.stamp.nanosec = this->scan_sdk.stamp -
-        RCL_S_TO_NS(this->scan_ptr_->header.stamp.sec);
-      this->scan_ptr_->angle_min = this->scan_sdk.config.min_angle;
-      this->scan_ptr_->angle_max = this->scan_sdk.config.max_angle;
-      this->scan_ptr_->angle_increment = this->scan_sdk.config.angle_increment;
-      this->scan_ptr_->scan_time = this->scan_sdk.config.scan_time;
-      this->scan_ptr_->time_increment = this->scan_sdk.config.time_increment;
-      this->scan_ptr_->range_min = this->scan_sdk.config.min_range;
-      this->scan_ptr_->range_max = this->scan_sdk.config.max_range;
+      this->raw_scan_.header.stamp.sec = RCL_NS_TO_S(this->scan_sdk.stamp);
+      this->raw_scan_.header.stamp.nanosec = this->scan_sdk.stamp -
+        RCL_S_TO_NS(this->raw_scan_.header.stamp.sec);
+      this->raw_scan_.angle_min = this->scan_sdk.config.min_angle;
+      this->raw_scan_.angle_max = this->scan_sdk.config.max_angle;
+      this->raw_scan_.angle_increment = this->scan_sdk.config.angle_increment;
+      this->raw_scan_.scan_time = this->scan_sdk.config.scan_time;
+      this->raw_scan_.time_increment = this->scan_sdk.config.time_increment;
+      this->raw_scan_.range_min = this->scan_sdk.config.min_range;
+      this->raw_scan_.range_max = this->scan_sdk.config.max_range;
       int size = (this->scan_sdk.config.max_angle - this->scan_sdk.config.min_angle) /
         this->scan_sdk.config.angle_increment + 1;
-      this->scan_ptr_->ranges.resize(size);
-      this->scan_ptr_->intensities.resize(size);
+      this->raw_scan_.ranges.resize(size);
+      this->raw_scan_.intensities.resize(size);
       for (size_t i = 0; i < this->scan_sdk.points.size(); i++) {
         int index = std::ceil(
           (this->scan_sdk.points[i].angle - this->scan_sdk.config.min_angle) /
           this->scan_sdk.config.angle_increment);
         if (index >= 0 && index < size) {
-          this->scan_ptr_->ranges[index] = this->scan_sdk.points[i].range;
-          this->scan_ptr_->intensities[index] = this->scan_sdk.points[i].intensity;
+          this->raw_scan_.ranges[index] = this->scan_sdk.points[i].range;
+          this->raw_scan_.intensities[index] = this->scan_sdk.points[i].intensity;
         }
       }
-      this->payload_callback_(this->scan_ptr_);
+      if (this->filter_ && this->filter_ptr_->update(this->raw_scan_, this->filter_scan_)) {
+        this->payload_callback_(std::make_shared<ScanMsg>(this->filter_scan_));
+      } else {
+        this->payload_callback_(std::make_shared<ScanMsg>(this->raw_scan_));
+      }
     }
   }
 }
@@ -294,6 +299,7 @@ void cyberdog::sensor::YdlidarCarpo::UpdateData()
 void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
 {
   int sleep_time = static_cast<int>(1000 / this->frequency_);
+  std::shared_ptr<ScanMsg> sim_scan_ptr = std::make_shared<ScanMsg>(this->raw_scan_);
   while (true) {
     if (!rclcpp::ok()) {
       WARN("[cyberdog_lidar]: !rclcpp::ok()");
@@ -303,8 +309,8 @@ void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
     if (this->sensor_state_ != SwitchState::start) {
       continue;
     }
-    this->scan_ptr_->header.stamp = rclcpp::Clock(RCL_SYSTEM_TIME).now();
-    this->payload_callback_(this->scan_ptr_);
+    this->raw_scan_.header.stamp = rclcpp::Clock(RCL_SYSTEM_TIME).now();
+    this->payload_callback_(sim_scan_ptr);
   }
 }
 

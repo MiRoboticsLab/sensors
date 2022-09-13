@@ -15,6 +15,7 @@ find_package(cyberdog_common REQUIRED)
 find_package(bream_vendor REQUIRED)
 find_package(protocol REQUIRED)
 find_package(ydlidar_sdk REQUIRED)
+find_package(filters REQUIRED)
 
 link_directories(${YDLIDAR_SDK_LIBRARY_DIRS})
 
@@ -42,6 +43,7 @@ ament_target_dependencies(
   ament_index_cpp
   bream_vendor
   protocol
+  filters
 )
 
 pluginlib_export_plugin_description_file(${PROJECT_NAME} plugin.xml)
