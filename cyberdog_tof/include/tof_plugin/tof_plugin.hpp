@@ -31,10 +31,9 @@ namespace sensor
 {
 typedef struct _tof_can
 {
-  uint8_t left_tof_data_array[64];
-  uint64_t left_tof_data_clock;
-  uint8_t right_tof_data_array[64];
-  uint64_t right_tof_data_clock;
+  uint8_t data_array[64];
+  uint64_t data_clock;
+  uint8_t intensity_array[64];
   uint8_t enable_on_ack;
   uint8_t enable_off_ack;
 } tof_can;
@@ -56,12 +55,19 @@ private:
   bool SingleOpen(uint8_t serial_number);
   bool SingleStop(uint8_t serial_number);
   bool SingleStart(uint8_t serial_number);
-  void head_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
-  void rear_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
+  void left_head_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
+  void right_head_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
+  void left_rear_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
+  void right_rear_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
 
 private:
   std::shared_ptr<protocol::msg::HeadTofPayload> head_tof_payload;
   std::shared_ptr<protocol::msg::RearTofPayload> rear_tof_payload;
+  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_left_head;
+  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_right_head;
+  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_left_rear;
+  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_right_rear;
+
 
   std::thread tof_pub_thread_simulator;
   void UpdateSimulationData();                                      // 更新模拟数据
@@ -74,13 +80,20 @@ private:
   const int TOFOFFSET = 50;
 
 
-  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_head;
-  bool tof_opened_head = false;
-  bool tof_started_head = false;
+  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_left_head;
+  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_right_head;
+  bool tof_opened_left_head = false;
+  bool tof_started_left_head = false;
+  bool tof_opened_right_head = false;
+  bool tof_started_right_head = false;
 
-  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_rear;
-  bool tof_opened_rear = false;
-  bool tof_started_rear = false;
+  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_left_rear;
+  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_right_rear;
+
+  bool tof_opened_left_rear = false;
+  bool tof_started_left_rear = false;
+  bool tof_opened_right_rear = false;
+  bool tof_started_right_rear = false;
 
   LOGGER_MINOR_INSTANCE("cyberdog_tof");
 };  // class TofCarpo
