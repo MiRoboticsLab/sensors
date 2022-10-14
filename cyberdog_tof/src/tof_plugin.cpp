@@ -375,9 +375,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           std::bind(
             &cyberdog::sensor::TofCarpo::
             left_head_callback, this, std::placeholders::_1, std::placeholders::_2));
+        tof_can_left_head->LINK_VAR(tof_can_left_head->GetData()->enable_on_ack);
         tof_can_left_head->Operate(
           "enable_on", std::vector<uint8_t>{});
-        tof_can_left_head->LINK_VAR(tof_can_left_head->GetData()->enable_on_ack);
         time_t time_head = time(nullptr);
         while (tof_opened_left_head == false && difftime(time(nullptr), time_head) < 4.0f) {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
@@ -398,9 +398,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           std::bind(
             &cyberdog::sensor::TofCarpo::right_head_callback,
             this, std::placeholders::_1, std::placeholders::_2));
+        tof_can_right_head->LINK_VAR(tof_can_right_head->GetData()->enable_on_ack);
         tof_can_right_head->Operate(
           "enable_on", std::vector<uint8_t>{});
-        tof_can_right_head->LINK_VAR(tof_can_right_head->GetData()->enable_on_ack);
         time_t time_rear = time(nullptr);
         while (tof_opened_right_head == false && difftime(time(nullptr), time_rear) < 4.0f) {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
@@ -423,9 +423,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           std::bind(
             &cyberdog::sensor::TofCarpo::left_rear_callback,
             this, std::placeholders::_1, std::placeholders::_2));
+        tof_can_left_rear->LINK_VAR(tof_can_left_rear->GetData()->enable_on_ack);
         tof_can_left_rear->Operate(
           "enable_on", std::vector<uint8_t>{});
-        tof_can_left_rear->LINK_VAR(tof_can_left_rear->GetData()->enable_on_ack);
         time_t time_rear = time(nullptr);
         while (tof_opened_left_rear == false && difftime(time(nullptr), time_rear) < 4.0f) {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
@@ -447,9 +447,9 @@ bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
           std::bind(
             &cyberdog::sensor::TofCarpo::right_rear_callback,
             this, std::placeholders::_1, std::placeholders::_2));
+        tof_can_right_rear->LINK_VAR(tof_can_right_rear->GetData()->enable_on_ack);
         tof_can_right_rear->Operate(
           "enable_on", std::vector<uint8_t>{});
-        tof_can_right_rear->LINK_VAR(tof_can_right_rear->GetData()->enable_on_ack);
         time_t time_rear = time(nullptr);
         while (tof_opened_right_rear == false && difftime(time(nullptr), time_rear) < 4.0f) {
           std::this_thread::sleep_for(std::chrono::microseconds(30000));
