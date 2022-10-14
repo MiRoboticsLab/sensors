@@ -93,9 +93,8 @@ bool cyberdog::sensor::UltrasonicCarpo::Open_()
     std::bind(
       &cyberdog::sensor::UltrasonicCarpo::recv_callback,
       this, std::placeholders::_1, std::placeholders::_2));
-  ultrasonic_can_->Operate("enable_on", std::vector<uint8_t>{});
   ultrasonic_can_->LINK_VAR(ultrasonic_can_->GetData()->enable_on_ack);
-
+  ultrasonic_can_->Operate("enable_on", std::vector<uint8_t>{});
   time_t time_opened_delay = time(nullptr);
   while (opened_ == false && difftime(time(nullptr), time_opened_delay) < 2.0f) {
     std::this_thread::sleep_for(std::chrono::microseconds(30000));
