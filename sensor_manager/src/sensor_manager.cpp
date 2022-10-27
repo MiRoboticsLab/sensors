@@ -133,13 +133,35 @@ bool cyberdog::sensor::SensorManager::Init()
 void cyberdog::sensor::SensorManager::Run()
 {
   INFO("SensorManager Running begin");
-  if (this->lidar_->Start() &&
-    this->gps_->Start() &&
-    this->ultrasonic_->Start() &&
-    this->tof_->Start())
-  {
-    rclcpp::spin(node_ptr_);
+  if (!this->lidar_->Start()) {
+    ERROR("Lidar start fail.");
+    rclcpp::shutdown();
+    return;
   }
+  INFO("Lidar start success.");
+
+  if (!this->gps_->Start()) {
+    ERROR("Gps start fail.");
+    rclcpp::shutdown();
+    return;
+  }
+  INFO("Gps start success.");
+
+  if (!this->ultrasonic_->Start()) {
+    ERROR("Ultrasonic start fail.");
+    rclcpp::shutdown();
+    return;
+  }
+  INFO("Ultrasonic start success.");
+
+  if (!this->tof_->Start()) {
+    ERROR("Tof start fail.");
+    rclcpp::shutdown();
+    return;
+  }
+  INFO("Tof start success.");
+  INFO("Sensor manager start success.");
+  rclcpp::spin(node_ptr_);
   rclcpp::shutdown();
 }
 
