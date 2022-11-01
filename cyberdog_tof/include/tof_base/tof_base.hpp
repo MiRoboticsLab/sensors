@@ -35,6 +35,8 @@ public:
   virtual bool Start_() = 0;
   virtual bool Stop_() = 0;
   virtual bool Close_() = 0;
+  virtual bool SelfCheck() = 0;
+  virtual bool LowPower() = 0;
   virtual ~TofBase() {}
   void SetHeadPayloadCallback(
     std::function<void(

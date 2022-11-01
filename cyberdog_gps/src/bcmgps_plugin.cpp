@@ -90,7 +90,7 @@ bool cyberdog::sensor::GpsCarpo::Open_()
 bool cyberdog::sensor::GpsCarpo::Start_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Start();}
-  bool is_start = bcmgps_->IsStarted();
+  is_start = bcmgps_->IsStarted();
   if (is_start == true) {
     INFO("[cyberdog_gps] gps start successfully");
   } else {
@@ -127,6 +127,16 @@ bool cyberdog::sensor::GpsCarpo::Close_()
   }
   return is_close;
   */
+}
+
+bool cyberdog::sensor::GpsCarpo::SelfCheck()
+{
+  return is_start;
+}
+
+bool cyberdog::sensor::GpsCarpo::LowPower()
+{
+  return true;
 }
 
 void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(
