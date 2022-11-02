@@ -314,5 +314,34 @@ void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
   }
 }
 
+bool cyberdog::sensor::YdlidarCarpo::SelfCheck()
+{
+  bool ret = false;
+  switch (this->sensor_state_)
+  {
+  case SwitchState::open:
+    ret = true;
+    break;
+  case SwitchState::start:
+    ret = true;
+    break;
+  case SwitchState::stop:
+    ret = this->Start() && this->Stop();
+    break;
+  case SwitchState::close:
+    ret = this->Open() && this->Start() && this->Stop() && this->Close();
+    break;
+  default:
+    ret = false;
+    break;
+  }
+  return ret;
+}
+
+bool cyberdog::sensor::YdlidarCarpo::LowPower()
+{
+  return true;
+}
+
 #include "pluginlib/class_list_macros.hpp"
 PLUGINLIB_EXPORT_CLASS(cyberdog::sensor::YdlidarCarpo, cyberdog::sensor::LidarBase)

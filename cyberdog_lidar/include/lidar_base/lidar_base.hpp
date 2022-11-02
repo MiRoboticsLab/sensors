@@ -42,6 +42,8 @@ protected:
   virtual bool Start_() = 0;
   virtual bool Stop_() = 0;
   virtual bool Close_() = 0;
+  virtual bool SelfCheck() = 0;
+  virtual bool LowPower() = 0;
   std::function<void(std::shared_ptr<sensor_msgs::msg::LaserScan> payload)> payload_callback_;
   LidarBase() {}
 };  // class LidarBase

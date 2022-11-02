@@ -60,6 +60,8 @@ private:
   bool Start_() override;
   bool Stop_() override;
   bool Close_() override;
+  bool SelfCheck() override;
+  bool LowPower() override;
   void UpdateData();                                                  // 更新数据
   void UpdateSimulationData();                                        // 更新模拟数据
 
