@@ -21,10 +21,12 @@
 #include "cyberdog_common/cyberdog_log.hpp"
 
 cyberdog::sensor::SensorManager::SensorManager(const std::string & name)
-: manager::ManagerBase(name),
+: cyberdog::machine::MachineActuator(name),
   name_(name)
 {
   node_ptr_ = rclcpp::Node::make_shared(name_);
+  executor.add_node(node_ptr_);
+  heart_beats_ptr_ = std::make_unique<cyberdog::machine::HeartBeatsActuator>("sensor");
 }
 
 cyberdog::sensor::SensorManager::~SensorManager()
@@ -111,23 +113,27 @@ bool cyberdog::sensor::SensorManager::Init()
 {
   INFO("SensorManager Initing begin");
 
-  this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
-  this->node_ptr_->get_parameter("simulator", this->simulator_);
-  auto is_simulator = [this](std::string sensor_name) -> bool {
-      return static_cast<bool>(std::find(
-               this->simulator_.begin(), this->simulator_.end(),
-               sensor_name) != this->simulator_.end());
-    };
-  INFO("gps is_simulator %d", is_simulator("gps"));
-  INFO("ultrasonic_ is_simulator %d", is_simulator("ultrasonic"));
-  INFO("tof_ is_simulator %d", is_simulator("tof"));
-  INFO("lidar_ is_simulator %d", is_simulator("lidar"));
-  return bool(
-    ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open() &&
-    tof_->Init(is_simulator("tof")) && tof_->Open() &&
-    lidar_->Init(is_simulator("lidar")) && lidar_->Open() &&
-    gps_->Init(is_simulator("gps")) && gps_->Open()
-  );
+  auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
+  auto path = local_share_dir + std::string("/toml_config/manager/state_machine_config.toml");
+  if (!this->MachineActuatorInit(
+      path,
+      node_ptr_))
+  {
+    ERROR("Init failed, actuator init error.");
+    return false;
+  }
+  this->RegisterStateCallback(SetUp_V, std::bind(&SensorManager::OnSetUp, this));
+  this->RegisterStateCallback(TearDown_V, std::bind(&SensorManager::ONTearDown, this));
+  this->RegisterStateCallback(SelfCheck_V, std::bind(&SensorManager::SelfCheck, this));
+  this->RegisterStateCallback(Active_V, std::bind(&SensorManager::OnActive, this));
+  this->RegisterStateCallback(DeActive_V, std::bind(&SensorManager::OnDeActive, this));
+  this->RegisterStateCallback(Protected_V, std::bind(&SensorManager::OnProtected, this));
+  this->RegisterStateCallback(LowPower_V, std::bind(&SensorManager::OnLowPower, this));
+  this->RegisterStateCallback(OTA_V, std::bind(&SensorManager::OnOTA, this));
+  this->RegisterStateCallback(Error_V, std::bind(&SensorManager::OnError, this));
+  heart_beats_ptr_->HeartBeatRun();
+  INFO("-------------------------------init:heart run and state actuator start");
+  return this->ActuatorStart();
 }
 
 void cyberdog::sensor::SensorManager::Run()
@@ -161,14 +167,14 @@ void cyberdog::sensor::SensorManager::Run()
   }
   INFO("Tof start success.");
   INFO("Sensor manager start success.");
-  rclcpp::spin(node_ptr_);
+  executor.spin();
   rclcpp::shutdown();
 }
 
-bool cyberdog::sensor::SensorManager::SelfCheck()
+int32_t cyberdog::sensor::SensorManager::SelfCheck()
 {
   // check all sensors from config
-  return true;
+  return 0;
 }
 
 bool cyberdog::sensor::SensorManager::IsStateValid()
@@ -205,28 +211,70 @@ bool cyberdog::sensor::SensorManager::SensorOperation(
   return result;
 }
 
-void cyberdog::sensor::SensorManager::OnError()
+int32_t cyberdog::sensor::SensorManager::OnError()
 {
+  return 0;
 }
 
-void cyberdog::sensor::SensorManager::OnLowPower()
+int32_t cyberdog::sensor::SensorManager::OnLowPower()
 {
+  return 0;
 }
 
-void cyberdog::sensor::SensorManager::OnSuspend()
+int32_t cyberdog::sensor::SensorManager::OnSuspend()
 {
+  return 0;
 }
 
-void cyberdog::sensor::SensorManager::OnProtected()
+int32_t cyberdog::sensor::SensorManager::OnProtected()
 {
+  return 0;
 }
 
-void cyberdog::sensor::SensorManager::OnActive()
+int32_t cyberdog::sensor::SensorManager::OnActive()
 {
-  ultrasonic_->Stop();
-  ultrasonic_->Close();
-  tof_->Stop();
-  tof_->Close();
+  // ultrasonic_->Stop();
+  // ultrasonic_->Close();
+  // tof_->Stop();
+  // tof_->Close();
+  return 0;
+}
+
+int32_t cyberdog::sensor::SensorManager::OnDeActive()
+{
+  return 0;
+}
+
+int32_t cyberdog::sensor::SensorManager::OnSetUp()
+{
+  this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
+  this->node_ptr_->get_parameter("simulator", this->simulator_);
+  auto is_simulator = [this](std::string sensor_name) -> bool {
+      return static_cast<bool>(std::find(
+               this->simulator_.begin(), this->simulator_.end(),
+               sensor_name) != this->simulator_.end());
+    };
+  INFO("gps is_simulator %d", is_simulator("gps"));
+  INFO("ultrasonic_ is_simulator %d", is_simulator("ultrasonic"));
+  INFO("tof_ is_simulator %d", is_simulator("tof"));
+  INFO("lidar_ is_simulator %d", is_simulator("lidar"));
+  bool result = bool(
+    ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open() &&
+    tof_->Init(is_simulator("tof")) && tof_->Open() &&
+    lidar_->Init(is_simulator("lidar")) && lidar_->Open() &&
+    gps_->Init(is_simulator("gps")) && gps_->Open()
+  );
+  return result ? 0 : -1;
+}
+
+int32_t cyberdog::sensor::SensorManager::ONTearDown()
+{
+  return 0;
+}
+
+int32_t cyberdog::sensor::SensorManager::OnOTA()
+{
+  return 0;
 }
 
 void cyberdog::sensor::SensorManager::gps_payload_callback(

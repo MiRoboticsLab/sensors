@@ -25,6 +25,8 @@ find_package(bream_vendor REQUIRED)
 find_package(cyberdog_ultrasonic REQUIRED)
 find_package(cyberdog_common REQUIRED)
 find_package(cyberdog_tof REQUIRED)
+find_package(cyberdog_machine REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
 
 
@@ -55,7 +57,9 @@ ament_target_dependencies(${PROJECT_NAME}
   cyberdog_gps
   cyberdog_lidar
   cyberdog_ultrasonic
-  cyberdog_tof)
+  cyberdog_tof
+  cyberdog_machine
+  ament_index_cpp)
 
 install( TARGETS
   ${PROJECT_NAME}
