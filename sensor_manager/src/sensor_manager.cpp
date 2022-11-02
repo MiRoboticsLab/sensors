@@ -236,9 +236,10 @@ void cyberdog::sensor::SensorManager::gps_payload_callback(
 }
 
 void cyberdog::sensor::SensorManager::lidar_payload_callback(
-  std::shared_ptr<ScanMsg> msg)
+  std::shared_ptr<ScanMsg> msg_ptr)
 {
-  lidar_publisher_->publish(*msg);
+  msg_ptr->header.stamp = this->node_ptr_->now();
+  lidar_publisher_->publish(*msg_ptr);
 }
 
 void cyberdog::sensor::SensorManager::ultrasonic_payload_callback(
