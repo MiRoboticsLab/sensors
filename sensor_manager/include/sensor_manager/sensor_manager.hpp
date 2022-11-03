@@ -40,6 +40,13 @@ namespace cyberdog
 {
 namespace sensor
 {
+enum class SensorErrorCode : int32_t
+{
+  kDemoError1 = 21,
+  kDemoError2 = 22,
+  kDemoError3 = 23
+};
+
 class SensorManager final : public cyberdog::machine::MachineActuator
 {
   using ScanMsg = sensor_msgs::msg::LaserScan;                        // [topic 类型]激光数据
@@ -75,6 +82,7 @@ private:
   std::vector<std::string> simulator_;
   rclcpp::Node::SharedPtr node_ptr_ {nullptr};
   std::unique_ptr<cyberdog::machine::HeartBeatsActuator> heart_beats_ptr_ {nullptr};
+  std::shared_ptr<cyberdog::system::CyberdogCode<SensorErrorCode>> code_ptr_ {nullptr};
   rclcpp::executors::MultiThreadedExecutor executor;
 
 private:

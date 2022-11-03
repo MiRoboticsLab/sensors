@@ -37,7 +37,7 @@ public:
     payload_callback_ = cb;
   }
 
-protected:
+public:
   virtual bool Open_() = 0;
   virtual bool Start_() = 0;
   virtual bool Stop_() = 0;

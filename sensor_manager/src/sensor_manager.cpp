@@ -27,6 +27,8 @@ cyberdog::sensor::SensorManager::SensorManager(const std::string & name)
   node_ptr_ = rclcpp::Node::make_shared(name_);
   executor.add_node(node_ptr_);
   heart_beats_ptr_ = std::make_unique<cyberdog::machine::HeartBeatsActuator>("sensor");
+  code_ptr_ = std::make_shared<cyberdog::system::CyberdogCode<SensorErrorCode>>(
+    cyberdog::system::ModuleCode::kSensorManager);
 }
 
 cyberdog::sensor::SensorManager::~SensorManager()
@@ -133,7 +135,25 @@ bool cyberdog::sensor::SensorManager::Init()
   this->RegisterStateCallback(Error_V, std::bind(&SensorManager::OnError, this));
   heart_beats_ptr_->HeartBeatRun();
   INFO("-------------------------------init:heart run and state actuator start");
-  return this->ActuatorStart();
+  // return this->ActuatorStart();
+  ActuatorStart();
+  this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
+  this->node_ptr_->get_parameter("simulator", this->simulator_);
+  auto is_simulator = [this](std::string sensor_name) -> bool {
+      return static_cast<bool>(std::find(
+               this->simulator_.begin(), this->simulator_.end(),
+               sensor_name) != this->simulator_.end());
+    };
+  INFO("gps is_simulator %d", is_simulator("gps"));
+  INFO("ultrasonic_ is_simulator %d", is_simulator("ultrasonic"));
+  INFO("tof_ is_simulator %d", is_simulator("tof"));
+  INFO("lidar_ is_simulator %d", is_simulator("lidar"));
+  return bool(
+    ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open() &&
+    tof_->Init(is_simulator("tof")) && tof_->Open() &&
+    lidar_->Init(is_simulator("lidar")) && lidar_->Open() &&
+    gps_->Init(is_simulator("gps")) && gps_->Open()
+  );
 }
 
 void cyberdog::sensor::SensorManager::Run()
@@ -145,21 +165,18 @@ void cyberdog::sensor::SensorManager::Run()
     return;
   }
   INFO("Lidar start success.");
-
   if (!this->gps_->Start()) {
     ERROR("Gps start fail.");
     rclcpp::shutdown();
     return;
   }
   INFO("Gps start success.");
-
   if (!this->ultrasonic_->Start()) {
     ERROR("Ultrasonic start fail.");
     rclcpp::shutdown();
     return;
   }
   INFO("Ultrasonic start success.");
-
   if (!this->tof_->Start()) {
     ERROR("Tof start fail.");
     rclcpp::shutdown();
@@ -174,7 +191,28 @@ void cyberdog::sensor::SensorManager::Run()
 int32_t cyberdog::sensor::SensorManager::SelfCheck()
 {
   // check all sensors from config
-  return 0;
+  INFO("SensorManager SelfCheck begin");
+  if (!this->lidar_->SelfCheck()) {
+    ERROR("Lidar selfcheck fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+  }
+  INFO("Lidar selfcheck success.");
+  if (!this->gps_->SelfCheck()) {
+    ERROR("Gps selfcheck fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+  }
+  INFO("Gps selfcheck success.");
+  if (!this->ultrasonic_->SelfCheck()) {
+    ERROR("Ultrasonic selfcheck fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+  }
+  INFO("Ultrasonic selfcheck success.");
+  if (!this->tof_->SelfCheck()) {
+    ERROR("Tof selfcheck fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+  }
+  INFO("Tof selfcheck success.");
+  return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kOK);
 }
 
 bool cyberdog::sensor::SensorManager::IsStateValid()
@@ -247,24 +285,62 @@ int32_t cyberdog::sensor::SensorManager::OnDeActive()
 
 int32_t cyberdog::sensor::SensorManager::OnSetUp()
 {
-  this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
-  this->node_ptr_->get_parameter("simulator", this->simulator_);
-  auto is_simulator = [this](std::string sensor_name) -> bool {
-      return static_cast<bool>(std::find(
-               this->simulator_.begin(), this->simulator_.end(),
-               sensor_name) != this->simulator_.end());
-    };
-  INFO("gps is_simulator %d", is_simulator("gps"));
-  INFO("ultrasonic_ is_simulator %d", is_simulator("ultrasonic"));
-  INFO("tof_ is_simulator %d", is_simulator("tof"));
-  INFO("lidar_ is_simulator %d", is_simulator("lidar"));
-  bool result = bool(
-    ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open() &&
-    tof_->Init(is_simulator("tof")) && tof_->Open() &&
-    lidar_->Init(is_simulator("lidar")) && lidar_->Open() &&
-    gps_->Init(is_simulator("gps")) && gps_->Open()
-  );
-  return result ? 0 : -1;
+  INFO("sensor on setup");
+  // this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
+  // this->node_ptr_->get_parameter("simulator", this->simulator_);
+  // auto is_simulator = [this](std::string sensor_name) -> bool {
+  //     return static_cast<bool>(std::find(
+  //              this->simulator_.begin(), this->simulator_.end(),
+  //              sensor_name) != this->simulator_.end());
+  //   };
+  // INFO("gps is_simulator %d", is_simulator("gps"));
+  // INFO("ultrasonic_ is_simulator %d", is_simulator("ultrasonic"));
+  // INFO("tof_ is_simulator %d", is_simulator("tof"));
+  // INFO("lidar_ is_simulator %d", is_simulator("lidar"));
+  // if(!ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open())
+  // {
+  //   ERROR("Ultrasonic init or open fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // if(!tof_->Init(is_simulator("tof")) && tof_->Open())
+  // {
+  //   ERROR("Tof init or open fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // if(!lidar_->Init(is_simulator("lidar")) && lidar_->Open())
+  // {
+  //   ERROR("Lidar init or open fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // if(!gps_->Init(is_simulator("gps")) && gps_->Open())
+  // {
+  //   ERROR("Gps init or open fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // INFO("SensorManager Running begin");
+  // if (!this->lidar_->Start()) {
+  //   ERROR("Lidar start fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // INFO("Lidar start success.");
+  // if (!this->gps_->Start()) {
+  //   ERROR("Gps start fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // INFO("Gps start success.");
+  // if (!this->ultrasonic_->Start()) {
+  //   ERROR("Ultrasonic start fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // INFO("Ultrasonic start success.");
+  // if (!this->tof_->Start()) {
+  //   ERROR("Tof start fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // INFO("Tof start success.");
+  // INFO("Sensor manager start success.");
+  INFO("sensor setup success");
+  return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kOK);
 }
 
 int32_t cyberdog::sensor::SensorManager::ONTearDown()
