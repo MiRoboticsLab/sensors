@@ -103,7 +103,9 @@ bool cyberdog::sensor::UltrasonicCarpo::Open_()
       difftime(time(nullptr), time_opened_delay));
   }
   if (opened_ == false) {
-    ERROR(" ultrasonic open failed ");
+    ERROR(
+      "ultrasonic open failed,can not receive enable on ack "
+      ",maybe can1 channel blocked");
   } else {
     INFO(" ultrasonic open successfully ");
   }
@@ -123,7 +125,10 @@ bool cyberdog::sensor::UltrasonicCarpo::Start_()
       difftime(time(nullptr), time_started_delay));
   }
   if (started_ == false) {
-    ERROR(" ultrasonic Start failed ");
+    ERROR(
+      "ultrasonic Start failed,can not receive ultrasonic datas"
+      ", maybe the mcu program crashes"
+      " or the ultrasound hardware is damaged");
   } else {
     INFO(" ultrasonic Start successfully ");
   }
@@ -166,6 +171,16 @@ bool cyberdog::sensor::UltrasonicCarpo::Close_()
     INFO(" ultrasonic closed successfully");
   }
   return !opened_;
+}
+
+bool cyberdog::sensor::UltrasonicCarpo::SelfCheck()
+{
+  return started_;
+}
+
+bool cyberdog::sensor::UltrasonicCarpo::LowPower()
+{
+  return true;
 }
 
 void cyberdog::sensor::UltrasonicCarpo::recv_callback(

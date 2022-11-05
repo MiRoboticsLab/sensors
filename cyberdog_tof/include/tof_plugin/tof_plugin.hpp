@@ -49,6 +49,8 @@ public:
   bool Start_() override;
   bool Stop_() override;
   bool Close_() override;
+  bool SelfCheck() override;
+  bool LowPower() override;
 
 private:
   std::map<SwitchState, std::string> state_msg_;                      // 状态消息

@@ -49,6 +49,8 @@ public:
   bool Start_() override;
   bool Stop_() override;
   bool Close_() override;
+  bool SelfCheck() override;
+  bool LowPower() override;
 
 private:
   void recv_callback(std::string & name, std::shared_ptr<ultrasonic_can> data);

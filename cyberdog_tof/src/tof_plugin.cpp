@@ -90,26 +90,34 @@ bool cyberdog::sensor::TofCarpo::Open_()
     INFO("left head tof opened successfully");
 
   } else {
-    FATAL("left head tof opened failed");
+    ERROR(
+      "left head tof opened failed,can not receive enable on ack "
+      ",maybe can1 channel blocked");
   }
 
   if (SingleOpen(protocol::msg::SingleTofPayload::RIGHT_HEAD)) {
     INFO("right head tof opened successfully");
 
   } else {
-    FATAL("right head tof opened failed");
+    ERROR(
+      "right head tof opened failed,can not receive enable on ack "
+      ",maybe can1 channel blocked");
   }
 
   if (SingleOpen(protocol::msg::SingleTofPayload::LEFT_REAR)) {
     INFO("left rear tof opened successfully");
   } else {
-    FATAL("left rear tof opened failed");
+    ERROR(
+      "left rear tof opened failed,can not receive enable on ack "
+      ",maybe can0 channel blocked");
   }
 
   if (SingleOpen(protocol::msg::SingleTofPayload::RIGHT_REAR)) {
     INFO("right rear tof opened successfully");
   } else {
-    FATAL("right rear tof opened failed");
+    ERROR(
+      "right rear tof opened failed,can not receive enable on ack "
+      ",maybe can0 channel blocked");
   }
 
   opened_ = tof_opened_left_head && tof_opened_right_head &&
@@ -131,25 +139,41 @@ bool cyberdog::sensor::TofCarpo::Start_()
   if (SingleStart(protocol::msg::SingleTofPayload::LEFT_HEAD)) {
     INFO("left head tof started successfully");
   } else {
-    FATAL("left head tof started failed");
+    ERROR(
+      "left head tof started failed,"
+      "can not receive tof datas"
+      ", maybe the mcu program crashes"
+      " or the ultrasonic hardware is damaged");
   }
 
   if (SingleStart(protocol::msg::SingleTofPayload::RIGHT_HEAD)) {
     INFO("right head started successfully");
   } else {
-    FATAL("right head started failed");
+    ERROR(
+      "right head tof started failed,"
+      "can not receive tof datas"
+      ", maybe the mcu program crashes"
+      " or the ultrasonic hardware is damaged");
   }
 
   if (SingleStart(protocol::msg::SingleTofPayload::LEFT_REAR)) {
     INFO("left rear tof started successfully");
   } else {
-    FATAL("left rear tof started failed");
+    ERROR(
+      "left rear tof started failed,"
+      "can not receive tof datas"
+      ", maybe the mcu program crashes"
+      " or the ultrasonic hardware is damaged");
   }
 
   if (SingleStart(protocol::msg::SingleTofPayload::RIGHT_REAR)) {
     INFO("right rear tof started successfully");
   } else {
-    FATAL("right rear tof started failed");
+    ERROR(
+      "right rear tof started failed,"
+      "can not receive tof datas"
+      ", maybe the mcu program crashes"
+      " or the ultrasonic hardware is damaged");
   }
 
   started_ = tof_started_left_head && tof_started_right_head &&
@@ -166,23 +190,23 @@ bool cyberdog::sensor::TofCarpo::Stop_()
   if (SingleStop(protocol::msg::SingleTofPayload::LEFT_HEAD)) {
     INFO("left head tof stoped successfully");
   } else {
-    FATAL("left head tof stoped failed");
+    ERROR("left head tof stoped failed");
   }
   if (SingleStop(protocol::msg::SingleTofPayload::RIGHT_HEAD)) {
     INFO("right head tof stoped successfully");
   } else {
-    FATAL("right head tofstoped failed");
+    ERROR("right head tofstoped failed");
   }
 
   if (SingleStop(protocol::msg::SingleTofPayload::LEFT_REAR)) {
     INFO("left rear tof stoped successfully");
   } else {
-    FATAL("left rear tof stoped failed");
+    ERROR("left rear tof stoped failed");
   }
   if (SingleStop(protocol::msg::SingleTofPayload::RIGHT_REAR)) {
     INFO("right rear tof stoped successfully");
   } else {
-    FATAL("right rear tof stoped failed");
+    ERROR("right rear tof stoped failed");
   }
 
   stopped_ = tof_started_left_head == 0 && tof_started_right_head == 0 &&
@@ -199,9 +223,19 @@ bool cyberdog::sensor::TofCarpo::Close_()
   if (closed_ == true) {
     INFO("all tofs closed successfully");
   } else {
-    FATAL("all tofs closed failed");
+    ERROR("all tofs closed failed");
   }
   return closed_;
+}
+
+bool cyberdog::sensor::TofCarpo::SelfCheck()
+{
+  return started_;
+}
+
+bool cyberdog::sensor::TofCarpo::LowPower()
+{
+  return true;
 }
 
 
@@ -220,7 +254,7 @@ bool cyberdog::sensor::TofCarpo::SingleStart(uint8_t serial_number)
             difftime(time(nullptr), time_started_delay));
         }
         if (tof_started_left_head == false) {
-          FATAL("left head tof  started failed ");
+          ERROR("left head tof  started failed ");
         } else {
           INFO("left head tof started successfully ");
         }
@@ -238,7 +272,7 @@ bool cyberdog::sensor::TofCarpo::SingleStart(uint8_t serial_number)
             difftime(time(nullptr), time_started_delay));
         }
         if (tof_started_right_head == false) {
-          FATAL("right head tof  started failed ");
+          ERROR("right head tof  started failed ");
         } else {
           INFO("right head tof started successfully ");
         }
@@ -256,7 +290,7 @@ bool cyberdog::sensor::TofCarpo::SingleStart(uint8_t serial_number)
             difftime(time(nullptr), time_started_delay));
         }
         if (tof_started_left_rear == false) {
-          FATAL("left rear tof  started failed ");
+          ERROR("left rear tof  started failed ");
         } else {
           INFO("left rear tof started successfully ");
         }
@@ -274,7 +308,7 @@ bool cyberdog::sensor::TofCarpo::SingleStart(uint8_t serial_number)
             difftime(time(nullptr), time_started_delay));
         }
         if (tof_started_right_rear == false) {
-          FATAL("right rear tof  started failed ");
+          ERROR("right rear tof  started failed ");
         } else {
           INFO("right rear tof started successfully ");
         }

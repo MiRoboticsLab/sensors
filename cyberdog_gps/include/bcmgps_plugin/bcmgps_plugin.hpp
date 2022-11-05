@@ -37,9 +37,12 @@ public:
   bool Start_() override;
   bool Stop_() override;
   bool Close_() override;
+  bool SelfCheck() override;
+  bool LowPower() override;
 
 private:
   bool is_open = false;
+  bool is_start = false;
   bool is_stop = false;
   std::map<SwitchState, std::string> state_msg_;                      // 状态消息
   std::thread gps_pub_thread_simulator;
