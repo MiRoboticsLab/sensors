@@ -146,28 +146,39 @@ void cyberdog::sensor::SensorManager::Run()
 
 int32_t cyberdog::sensor::SensorManager::SelfCheck()
 {
-  // check all sensors from config
-  INFO("SensorManager SelfCheck begin");
-  if (!this->lidar_->SelfCheck()) {
-    ERROR("Lidar selfcheck fail.");
+  try {
+    // check all sensors from config
+    INFO("SensorManager SelfCheck begin");
+    if (!this->lidar_->SelfCheck()) {
+      ERROR("Lidar selfcheck fail.");
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+    }
+    INFO("Lidar selfcheck success.");
+    if (!this->gps_->SelfCheck()) {
+      ERROR("Gps selfcheck fail.");
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+    }
+    INFO("Gps selfcheck success.");
+    if (!this->ultrasonic_->SelfCheck()) {
+      ERROR("Ultrasonic selfcheck fail.");
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+    }
+    INFO("Ultrasonic selfcheck success.");
+    if (!this->tof_->SelfCheck()) {
+      ERROR("Tof selfcheck fail.");
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+    }
+    INFO("Tof selfcheck success.");
+  } catch (const std::bad_function_call & e) {
+    ERROR("bad function:%s", e.what());
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+  } catch (const std::exception & e) {
+    ERROR("exception:%s", e.what());
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+  } catch (...) {
+    ERROR("self check unkown exception!");
     return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
   }
-  INFO("Lidar selfcheck success.");
-  if (!this->gps_->SelfCheck()) {
-    ERROR("Gps selfcheck fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
-  }
-  INFO("Gps selfcheck success.");
-  if (!this->ultrasonic_->SelfCheck()) {
-    ERROR("Ultrasonic selfcheck fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
-  }
-  INFO("Ultrasonic selfcheck success.");
-  if (!this->tof_->SelfCheck()) {
-    ERROR("Tof selfcheck fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
-  }
-  INFO("Tof selfcheck success.");
   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kOK);
 }
 
