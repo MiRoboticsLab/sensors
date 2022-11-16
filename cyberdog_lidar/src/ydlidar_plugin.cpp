@@ -116,13 +116,14 @@ bool cyberdog::sensor::YdlidarCarpo::Open_()
 
   int_optvalue =
     toml::find_or(
-    this->params_toml_, "dylidar", "lidar_type", static_cast<int>(TYPE_TRIANGLE));
+    this->params_toml_, "dylidar", "lidar_type", static_cast<int>(LidarTypeID::TYPE_TOF));
   this->lidar_ptr_->setlidaropt(LidarPropLidarType, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->lidar_type = %d", int_optvalue);
 
   int_optvalue =
     toml::find_or(
-    this->params_toml_, "dylidar", "device_type", static_cast<int>(YDLIDAR_TYPE_SERIAL));
+    this->params_toml_, "dylidar", "device_type",
+    static_cast<int>(DeviceTypeID::YDLIDAR_TYPE_SERIAL));
   this->lidar_ptr_->setlidaropt(LidarPropDeviceType, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->device_type = %d", int_optvalue);
 
@@ -281,30 +282,12 @@ void cyberdog::sensor::YdlidarCarpo::UpdateData()
       this->raw_scan_.intensities.resize(size);
       std::vector<bool> scan_updata;
       scan_updata.resize(size);
-      // float set_range_max = 0, set_range_min = 0;
-      // bool set_reversion = false;
-      // this->lidar_ptr_->getlidaropt(LidarPropMaxAngle, &set_range_max, sizeof(float));
-      // this->lidar_ptr_->getlidaropt(LidarPropMinAngle, &set_range_min, sizeof(float));
-      // this->lidar_ptr_->getlidaropt(LidarPropReversion, &set_reversion, sizeof(bool));
-      // printf("set_range_min %f set_range_max %f set_reversion %d\n",
-      //   set_range_min,
-      //   set_range_max,
-      //   set_reversion);
-      // printf("min_angle %f max_angle %f\n",
-      //   this->scan_sdk.config.min_angle,
-      //   this->scan_sdk.config.max_angle);
-
       for (size_t i = 0; i < this->scan_sdk.points.size(); i++) {
-        // const LaserPoint& p = this->scan_sdk.points.at(i);
-        // printf("%d angle %f range %f intensity %f\n",
-        //   i,
-        //   p.angle * 180 / M_PI,
-        //   p.range,
-        //   p.intensity);
         int index = std::ceil(
           (this->scan_sdk.points[i].angle - this->scan_sdk.config.min_angle) /
           this->scan_sdk.config.angle_increment);
         if ((index >= 0) && (index < size) && (!scan_updata[index])) {
+          scan_updata[index] = true;
           this->raw_scan_.ranges[index] = this->scan_sdk.points[i].range;
           this->raw_scan_.intensities[index] = this->scan_sdk.points[i].intensity;
         }
