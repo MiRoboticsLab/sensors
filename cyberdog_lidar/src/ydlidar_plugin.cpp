@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "lidar_plugin/ydlidar_plugin.hpp"
@@ -115,13 +116,14 @@ bool cyberdog::sensor::YdlidarCarpo::Open_()
 
   int_optvalue =
     toml::find_or(
-    this->params_toml_, "dylidar", "lidar_type", static_cast<int>(TYPE_TRIANGLE));
+    this->params_toml_, "dylidar", "lidar_type", static_cast<int>(LidarTypeID::TYPE_TOF));
   this->lidar_ptr_->setlidaropt(LidarPropLidarType, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->lidar_type = %d", int_optvalue);
 
   int_optvalue =
     toml::find_or(
-    this->params_toml_, "dylidar", "device_type", static_cast<int>(YDLIDAR_TYPE_SERIAL));
+    this->params_toml_, "dylidar", "device_type",
+    static_cast<int>(DeviceTypeID::YDLIDAR_TYPE_SERIAL));
   this->lidar_ptr_->setlidaropt(LidarPropDeviceType, &int_optvalue, sizeof(int));
   DEBUG("[Open] dylidar->device_type = %d", int_optvalue);
 
@@ -278,11 +280,14 @@ void cyberdog::sensor::YdlidarCarpo::UpdateData()
         this->scan_sdk.config.angle_increment + 1;
       this->raw_scan_.ranges.resize(size);
       this->raw_scan_.intensities.resize(size);
+      std::vector<bool> scan_updata;
+      scan_updata.resize(size);
       for (size_t i = 0; i < this->scan_sdk.points.size(); i++) {
         int index = std::ceil(
           (this->scan_sdk.points[i].angle - this->scan_sdk.config.min_angle) /
           this->scan_sdk.config.angle_increment);
-        if (index >= 0 && index < size) {
+        if ((index >= 0) && (index < size) && (!scan_updata[index])) {
+          scan_updata[index] = true;
           this->raw_scan_.ranges[index] = this->scan_sdk.points[i].range;
           this->raw_scan_.intensities[index] = this->scan_sdk.points[i].intensity;
         }
