@@ -52,11 +52,6 @@ install(
 )
 
 install(
-  DIRECTORY logs/
-  DESTINATION share/${PROJECT_NAME}/logs
-)
-
-install(
   TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib

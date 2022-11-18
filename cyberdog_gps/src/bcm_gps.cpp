@@ -238,14 +238,6 @@ bool bcm_gps::GPS::Init()
 
   // reset entire chip
   LD2OS_initGpio();
-  std::string local_log_dir;
-  local_log_dir = ament_index_cpp::get_package_share_directory("cyberdog_gps") + std::string(
-    "/logs/");
-  local_log_dir = "/opt/ros2/cyberdog/";
-  INFO("[cyberdog_gps]: Log path: %s", local_log_dir.c_str());
-  // LD2OS_openLog(local_log_dir);
-  LD2OS_openLog();
-  INFO("[cyberdog_gps]: Log path set ok!!!");
   int portNumber = -1;
   const int baudrate = 3000000;
   const char * tty = spi_str.c_str();
@@ -292,7 +284,6 @@ bool bcm_gps::GPS::Init()
 
   // Config GNSS
   INFO("[cyberdog_gps]: ConfigGNSS");
-  LD2_LOG("ConfigGNSS()\n");
   uint8_t infMsgMask[6];
   for (int a = 0; a < 6 && a < static_cast<int>(infMsgMask_vec.size()); a++) {
     infMsgMask[a] = infMsgMask_vec[a];
@@ -332,14 +323,9 @@ bool bcm_gps::GPS::Init()
   BreamHelper::GetInstance().SetMsgRate(0x02, 0x13, MsgRate_vec[index++]);  // Report ASC SUBFRAMES
   BreamHelper::GetInstance().SetMsgRate(0x02, 0x15, MsgRate_vec[index++]);  // Report ASC MEAS
   BreamHelper::GetInstance().SetMsgRate(0x02, 0x80, MsgRate_vec[index++]);  // Report ASC AGC
-
   BreamHelper::GetInstance().SetAckAiding(AckAiding);
   BreamHelper::GetInstance().GetVer();
-
-  LD2_LOG("============================\n");
-  LD2_LOG("Finish Config\n");
   INFO("[cyberdog_gps]: Finish Config");
-
   ready_ = true;
   return true;
 }
