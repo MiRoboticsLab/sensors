@@ -29,6 +29,7 @@ cyberdog::sensor::SensorManager::SensorManager(const std::string & name)
   heart_beats_ptr_ = std::make_unique<cyberdog::machine::HeartBeatsActuator>("sensor");
   code_ptr_ = std::make_shared<cyberdog::system::CyberdogCode<SensorErrorCode>>(
     cyberdog::system::ModuleCode::kSensorManager);
+  sensor_self_check_ptr = std::make_unique<SensorSelfCheck>();
 }
 
 cyberdog::sensor::SensorManager::~SensorManager()
@@ -151,22 +152,38 @@ int32_t cyberdog::sensor::SensorManager::SelfCheck()
     INFO("SensorManager SelfCheck begin");
     if (!this->lidar_->SelfCheck()) {
       ERROR("Lidar selfcheck fail.");
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      if (!sensor_self_check_ptr->IsJump("lidar")) {
+        return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      } else {
+        INFO("Jump lidar selfcheck error.");
+      }
     }
     INFO("Lidar selfcheck success.");
     if (!this->gps_->SelfCheck()) {
       ERROR("Gps selfcheck fail.");
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      if (!sensor_self_check_ptr->IsJump("gps")) {
+        return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      } else {
+        INFO("Jump gps selfcheck error.");
+      }
     }
     INFO("Gps selfcheck success.");
     if (!this->ultrasonic_->SelfCheck()) {
       ERROR("Ultrasonic selfcheck fail.");
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
+        return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      } else {
+        INFO("Jump ultrasonic selfcheck error.");
+      }
     }
     INFO("Ultrasonic selfcheck success.");
     if (!this->tof_->SelfCheck()) {
       ERROR("Tof selfcheck fail.");
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      if (!sensor_self_check_ptr->IsJump("tof")) {
+        return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kSelfCheckFailed);
+      } else {
+        INFO("Jump tof selfcheck error.");
+      }
     }
     INFO("Tof selfcheck success.");
   } catch (const std::bad_function_call & e) {

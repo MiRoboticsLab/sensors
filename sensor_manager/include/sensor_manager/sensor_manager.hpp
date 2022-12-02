@@ -35,6 +35,7 @@
 #include "protocol/srv/sensor_operation.hpp"
 #include "cyberdog_machine/cyberdog_fs_machine.hpp"
 #include "cyberdog_machine/cyberdog_heartbeats.hpp"
+#include "sensor_manager/self_check.hpp"
 
 namespace cyberdog
 {
@@ -83,6 +84,7 @@ private:
   rclcpp::Node::SharedPtr node_ptr_ {nullptr};
   std::unique_ptr<cyberdog::machine::HeartBeatsActuator> heart_beats_ptr_ {nullptr};
   std::shared_ptr<cyberdog::system::CyberdogCode<SensorErrorCode>> code_ptr_ {nullptr};
+  std::unique_ptr<SensorSelfCheck> sensor_self_check_ptr {nullptr};
   rclcpp::executors::MultiThreadedExecutor executor;
 
 private:
