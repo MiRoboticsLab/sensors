@@ -305,39 +305,71 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   INFO("lidar_ is_simulator %d", is_simulator("lidar"));
   if (!(ultrasonic_->Init(is_simulator("ultrasonic")) && ultrasonic_->Open())) {
     ERROR("Ultrasonic init or open fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump ultrasonic init or open error.");
+    }
   }
   if (!(tof_->Init(is_simulator("tof")) && tof_->Open())) {
     ERROR("Tof init or open fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("tof")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump tof init or open error.");
+    }
   }
   if (!(lidar_->Init(is_simulator("lidar")) && lidar_->Open())) {
     ERROR("Lidar init or open fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("lidar")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump lidar init or open error.");
+    }
   }
   if (!(gps_->Init(is_simulator("gps")) && gps_->Open())) {
     ERROR("Gps init or open fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("gps")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump gps init or open error.");
+    }
   }
   INFO("SensorManager Running begin");
   if (!this->lidar_->Start()) {
     ERROR("Lidar start fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("lidar")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump lidar start error.");
+    }
   }
   INFO("Lidar start success.");
   if (!this->gps_->Start()) {
     ERROR("Gps start fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("gps")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump gps start error.");
+    }
   }
   INFO("Gps start success.");
   if (!this->ultrasonic_->Start()) {
     ERROR("Ultrasonic start fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump ultrasonic start error.");
+    }
   }
   INFO("Ultrasonic start success.");
   if (!this->tof_->Start()) {
     ERROR("Tof start fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("tof")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump tof start error.");
+    }
   }
   INFO("Tof start success.");
   INFO("Sensor manager start success.");
