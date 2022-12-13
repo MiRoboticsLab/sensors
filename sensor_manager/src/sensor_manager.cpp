@@ -240,7 +240,26 @@ int32_t cyberdog::sensor::SensorManager::OnError()
 
 int32_t cyberdog::sensor::SensorManager::OnLowPower()
 {
-  return 0;
+  if (!this->lidar_->Stop()) {
+    ERROR("Lidar stop fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  }
+  INFO("Lidar stop success.");
+  // if (!this->gps_->Stop()) {
+  //   ERROR("Gps stop fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // INFO("Gps stop success.");
+  if (!this->ultrasonic_->Stop()) {
+    ERROR("Ultrasonic stop fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  }
+  INFO("Ultrasonic stop success.");
+  if (!this->tof_->Stop()) {
+    ERROR("Tof stop fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  }
+  return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kOK);
 }
 
 int32_t cyberdog::sensor::SensorManager::OnSuspend()
@@ -281,6 +300,28 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   // }
   // INFO("Tof start success.");
   // INFO("Sensor manager start success.");
+  INFO("SensorManager Running begin");
+  if (!this->lidar_->Start()) {
+    ERROR("Lidar start fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  }
+  INFO("Lidar start success.");
+  // if (!this->gps_->Start()) {
+  //   ERROR("Gps start fail.");
+  //   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  // }
+  // INFO("Gps start success.");
+  if (!this->ultrasonic_->Start()) {
+    ERROR("Ultrasonic start fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  }
+  INFO("Ultrasonic start success.");
+  if (!this->tof_->Start()) {
+    ERROR("Tof start fail.");
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+  }
+  INFO("Tof start success.");
+  INFO("Sensor manager start success.");
   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kOK);
 }
 
