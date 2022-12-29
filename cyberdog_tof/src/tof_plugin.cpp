@@ -186,7 +186,6 @@ bool cyberdog::sensor::TofCarpo::Start_()
 
 bool cyberdog::sensor::TofCarpo::Stop_()
 {
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
   if (SingleStop(protocol::msg::SingleTofPayload::LEFT_HEAD)) {
     INFO("left head tof stoped successfully");
   } else {
