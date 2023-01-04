@@ -138,8 +138,8 @@ bool cyberdog::sensor::UltrasonicCarpo::Start_()
 bool cyberdog::sensor::UltrasonicCarpo::Stop_()
 {
   if (opened_ == false || started_ == false) {
-    ERROR(" The ultrasonic sensor is not on, so the close fails");
-    return false;
+    INFO(" The ultrasonic sensor is already stopped,return true");
+    return true;
   }
   ultrasonic_can_->BREAK_VAR(ultrasonic_can_->GetData()->ultrasonic_data);
   ultrasonic_can_->BREAK_VAR(ultrasonic_can_->GetData()->ultrasonic_data_intensity);
