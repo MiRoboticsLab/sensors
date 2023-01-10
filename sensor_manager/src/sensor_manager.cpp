@@ -58,7 +58,7 @@ void cyberdog::sensor::SensorManager::Config()
   INFO("lidar Configuring beginning");
   lidar_publisher_ = node_ptr_->create_publisher<ScanMsg>(
     "scan",
-    rclcpp::SystemDefaultsQoS());
+    rclcpp::SensorDataQoS());
   std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::LidarBase>> lidar_classloader;
   lidar_classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::LidarBase>>(
     "cyberdog_lidar", "cyberdog::sensor::LidarBase");
