@@ -242,7 +242,11 @@ int32_t cyberdog::sensor::SensorManager::OnLowPower()
 {
   if (!this->lidar_->Stop()) {
     ERROR("Lidar stop fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("lidar")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump lidar switch low-power state error.");
+    }
   }
   INFO("Lidar stop success.");
   // if (!this->gps_->Stop()) {
@@ -252,12 +256,20 @@ int32_t cyberdog::sensor::SensorManager::OnLowPower()
   // INFO("Gps stop success.");
   if (!this->ultrasonic_->Stop()) {
     ERROR("Ultrasonic stop fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump ultrasonic switch low-power state error.");
+    }
   }
   INFO("Ultrasonic stop success.");
   if (!this->tof_->Stop()) {
     ERROR("Tof stop fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("tof")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump tof switch low-power state error.");
+    }
   }
   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kOK);
 }
@@ -303,7 +315,11 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   INFO("SensorManager Running begin");
   if (!this->lidar_->Start()) {
     ERROR("Lidar start fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("lidar")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump lidar enter active state error.");
+    }
   }
   INFO("Lidar start success.");
   // if (!this->gps_->Start()) {
@@ -313,12 +329,20 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   // INFO("Gps start success.");
   if (!this->ultrasonic_->Start()) {
     ERROR("Ultrasonic start fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump ultrasonic enter active state error.");
+    }
   }
   INFO("Ultrasonic start success.");
   if (!this->tof_->Start()) {
     ERROR("Tof start fail.");
-    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    if (!sensor_self_check_ptr->IsJump("tof")) {
+      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
+    } else {
+      INFO("Jump tof enter active state error.");
+    }
   }
   INFO("Tof start success.");
   INFO("Sensor manager start success.");
