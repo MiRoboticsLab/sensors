@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 #include "pluginlib/class_loader.hpp"
 #include "bcmgps_base/bcmgps_base.hpp"
 #include "protocol/msg/gps_payload.hpp"
@@ -102,9 +103,14 @@ private:
 
   std::shared_ptr<cyberdog::sensor::TofBase> tof_;
   rclcpp::Publisher<protocol::msg::HeadTofPayload>::SharedPtr head_tof_publisher_;
-  void head_tof_payload_callback(std::shared_ptr<protocol::msg::HeadTofPayload> msg);
   rclcpp::Publisher<protocol::msg::RearTofPayload>::SharedPtr rear_tof_publisher_;
-  void rear_tof_payload_callback(std::shared_ptr<protocol::msg::RearTofPayload> msg);
+  std::shared_ptr<protocol::msg::HeadTofPayload> head_tof_payload;
+  std::shared_ptr<protocol::msg::RearTofPayload> rear_tof_payload;
+  std::unordered_map<std::string, std::atomic<bool>> head_tof_;
+  std::unordered_map<std::string, std::atomic<bool>> rear_tof_;
+  std::mutex head_tof_lock_;
+  std::mutex rear_tof_lock_;
+  void SingleTofPayloadCallback(std::shared_ptr<protocol::msg::SingleTofPayload> msg);
 
   rclcpp::Service<protocol::srv::SensorOperation>::SharedPtr sensor_operation_srv_;
   void sensor_operation(

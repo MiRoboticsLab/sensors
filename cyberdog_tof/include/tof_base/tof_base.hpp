@@ -18,8 +18,6 @@
 #include <memory>
 #include <functional>
 #include "protocol/msg/single_tof_payload.hpp"
-#include "protocol/msg/head_tof_payload.hpp"
-#include "protocol/msg/rear_tof_payload.hpp"
 
 namespace cyberdog
 {
@@ -38,24 +36,16 @@ public:
   virtual bool SelfCheck() = 0;
   virtual bool LowPower() = 0;
   virtual ~TofBase() {}
-  void SetHeadPayloadCallback(
+  void SetSinglePayloadCallback(
     std::function<void(
-      std::shared_ptr<protocol::msg::HeadTofPayload> payload)> cb)
+      std::shared_ptr<protocol::msg::SingleTofPayload> payload)> cb)
   {
-    head_payload_callback_ = cb;
-  }
-  void SetRearPayloadCallback(
-    std::function<void(
-      std::shared_ptr<protocol::msg::RearTofPayload> payload)> cb)
-  {
-    rear_payload_callback_ = cb;
+    single_payload_callback_ = cb;
   }
 
 protected:
-  std::function<void(std::shared_ptr<protocol::msg::HeadTofPayload> payload)>
-  head_payload_callback_;
-  std::function<void(std::shared_ptr<protocol::msg::RearTofPayload> payload)>
-  rear_payload_callback_;
+  std::function<void(std::shared_ptr<protocol::msg::SingleTofPayload> payload)>
+  single_payload_callback_;
 
   TofBase() {}
 };  // class TofBase
