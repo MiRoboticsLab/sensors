@@ -14,63 +14,96 @@
 
 #include <unistd.h>
 #include <time.h>
-#include <chrono>
 #include <memory>
 #include <ctime>
 #include <vector>
 #include <string>
+#include <utility>
 #include "tof_plugin/tof_plugin.hpp"
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
-#include "cyberdog_common/cyberdog_log.hpp"
+#include "cyberdog_common/cyberdog_toml.hpp"
 
+const int kTofOffset = 50;
+const char * kDefaultPath = "/toml_config/sensors/";
+const char * kConfigFile = "/toml_config/sensors/tof_config.toml";
+const int kMsgCheckInterval = 60000;  // ms
 
 bool cyberdog::sensor::TofCarpo::Init(bool simulator)
 {
+  simulator_ = simulator;
   this->state_msg_.insert({SwitchState::open, "Open"});
   this->state_msg_.insert({SwitchState::start, "Start"});
   this->state_msg_.insert({SwitchState::stop, "Stop"});
   this->state_msg_.insert({SwitchState::close, "Close"});
+  this->Open = std::bind(&cyberdog::sensor::TofCarpo::Open_, this);
+  this->Start = std::bind(&cyberdog::sensor::TofCarpo::Start_, this);
+  this->Stop = std::bind(&cyberdog::sensor::TofCarpo::Stop_, this);
+  this->Close = std::bind(&cyberdog::sensor::TofCarpo::Close_, this);
 
-  if (!simulator) {
-    this->Open = std::bind(&cyberdog::sensor::TofCarpo::Open_, this);
-    this->Start = std::bind(&cyberdog::sensor::TofCarpo::Start_, this);
-    this->Stop = std::bind(&cyberdog::sensor::TofCarpo::Stop_, this);
-    this->Close = std::bind(&cyberdog::sensor::TofCarpo::Close_, this);
+  auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
+  auto config_file = local_share_dir + kConfigFile;
+  toml::value config;
+  if (!common::CyberdogToml::ParseFile(config_file, config)) {
+    ERROR("Init failed, toml file[%s] is invalid!", config_file.c_str());
+    return false;
+  }
+
+  toml::value tof_config;
+  std::vector<std::string> tof_cfg_files;
+
+  if (!common::CyberdogToml::Get(config, "tof_config", tof_config)) {
+    ERROR("Init failed, toml file[%s] get param [tof_config] failed!", config_file.c_str());
+    return false;
   } else {
-    auto Simulator = [this](SwitchState now_state) -> bool {
-        INFO("%s cyberdog_tof ...", this->state_msg_[now_state].c_str());
-        switch (now_state) {
-          case SwitchState::open:
-          case SwitchState::stop:
-            break;
-          case SwitchState::start:
-            head_tof_payload = std::make_shared<protocol::msg::HeadTofPayload>();
-            rear_tof_payload = std::make_shared<protocol::msg::RearTofPayload>();
+    if (!common::CyberdogToml::Get(tof_config, "config_files", tof_cfg_files)) {
+      ERROR("Init failed, toml file[%s] get param [config_files] failed!", config_file.c_str());
+      return false;
+    }
+  }
+  if (!simulator_) {
+    for (auto & file : tof_cfg_files) {
+      auto path = local_share_dir + kDefaultPath + file;
+      std::shared_ptr<EVM::Protocol<TofMsg>> tof_msg = std::make_shared<EVM::Protocol<TofMsg>>(
+        path, false);
 
-            tof_pub_thread_simulator =
-              std::thread(std::bind(&cyberdog::sensor::TofCarpo::UpdateSimulationData, this));
-            break;
-          case SwitchState::close:
-            if ((&tof_pub_thread_simulator != nullptr) &&
-              tof_pub_thread_simulator.joinable())
-            {
-              tof_pub_thread_simulator.join();
-            }
-            break;
-          default:
-            WARN("cyberdog_tof not recognized state");
-            break;
+      std::shared_ptr<protocol::msg::SingleTofPayload> tof_data =
+        std::make_shared<protocol::msg::SingleTofPayload>();
+      if (tof_map_.find(tof_msg->GetName()) == tof_map_.end()) {
+        tof_map_.insert(std::make_pair(tof_msg->GetName(), tof_msg));
+        tof_data_map_.insert(std::make_pair(tof_msg->GetName(), tof_data));
+        tof_msg->GetData()->data_received = false;
+        tof_msg->LINK_VAR(tof_msg->GetData()->data);
+        tof_msg->LINK_VAR(tof_msg->GetData()->enable_off_ack);
+        tof_msg->LINK_VAR(tof_msg->GetData()->enable_on_ack);
+        tof_msg->SetDataCallback(
+          std::bind(
+            &cyberdog::sensor::TofCarpo::
+            TofMsgCallback, this, std::placeholders::_1, std::placeholders::_2));
+      }
+    }
+  } else {
+    for (auto & file : tof_cfg_files) {
+      auto path = local_share_dir + kDefaultPath + file;
+      {
+        toml::value single_config;
+        std::string name;
+
+        if (!common::CyberdogToml::ParseFile(path, single_config)) {
+          ERROR("Init failed, toml file[%s] is invalid!", path.c_str());
+          return false;
+        }
+        if (!common::CyberdogToml::Get(single_config, "name", name)) {
+          ERROR("Init failed, toml file[%s] get param [name] failed!", path.c_str());
+          return false;
         }
 
-        INFO("cyberdog_tof %s ok", this->state_msg_[now_state].c_str());
-        return true;
-      };
-    this->Open = std::bind(Simulator, SwitchState::open);
-    this->Start = std::bind(Simulator, SwitchState::start);
-    this->Stop = std::bind(Simulator, SwitchState::stop);
-    this->Close = std::bind(Simulator, SwitchState::close);
+        tof_map_.insert(std::make_pair(name, nullptr));
+      }
+    }
+    simulator_thread_ = std::thread(std::bind(&cyberdog::sensor::TofCarpo::SimulationThread, this));
+    simulator_thread_.detach();
   }
   return true;
 }
@@ -78,158 +111,132 @@ bool cyberdog::sensor::TofCarpo::Init(bool simulator)
 
 bool cyberdog::sensor::TofCarpo::Open_()
 {
-  head_tof_payload = std::make_shared<protocol::msg::HeadTofPayload>();
-  rear_tof_payload = std::make_shared<protocol::msg::RearTofPayload>();
-  tof_payload_left_head = std::make_shared<protocol::msg::SingleTofPayload>();
-  tof_payload_right_head = std::make_shared<protocol::msg::SingleTofPayload>();
-  tof_payload_left_rear = std::make_shared<protocol::msg::SingleTofPayload>();
-  tof_payload_right_rear = std::make_shared<protocol::msg::SingleTofPayload>();
+  bool status_ok = true;
 
-
-  if (SingleOpen(protocol::msg::SingleTofPayload::LEFT_HEAD)) {
-    INFO("left head tof opened successfully");
-
-  } else {
-    ERROR(
-      "left head tof opened failed,can not receive enable on ack "
-      ",maybe can1 channel blocked");
+  if (!simulator_) {
+    for (auto & tof : tof_map_) {
+      tof.second->GetData()->time_start = std::chrono::system_clock::now();
+      tof.second->GetData()->rx_cnt = 0;
+      tof.second->GetData()->rx_error_cnt = 0;
+      if (tof.second->GetData()->data_received) {
+        INFO("[%s] opened successfully", tof.first.c_str());
+        continue;
+      }
+      int retry = 0;
+      bool single_status_ok = true;
+      while (retry++ < 3) {
+        tof.second->Operate("enable_on", std::vector<uint8_t>{});
+        if (tof.second->GetData()->enable_on_signal.WaitFor(1000)) {
+          if (!tof.second->GetData()->data_received) {
+            ERROR(
+              "[%s] opened failed,can not receive enable on ack ,time[%d]",
+              tof.first.c_str(), retry);
+            single_status_ok = false;
+          } else {
+            single_status_ok = true;
+            INFO("[%s] opened successfully", tof.first.c_str());
+            break;
+          }
+        } else {
+          if (tof.second->GetData()->enable_on_ack == 0) {
+            single_status_ok = true;
+            INFO("[%s] opened successfully", tof.first.c_str());
+            break;
+          } else {
+            single_status_ok = false;
+            ERROR(
+              "[%s] opened failed, get ack 0x%x!", tof.first.c_str(),
+              tof.second->GetData()->enable_on_ack);
+          }
+        }
+      }
+      if (!single_status_ok) {status_ok = false;}
+    }
   }
-
-  if (SingleOpen(protocol::msg::SingleTofPayload::RIGHT_HEAD)) {
-    INFO("right head tof opened successfully");
-
-  } else {
-    ERROR(
-      "right head tof opened failed,can not receive enable on ack "
-      ",maybe can1 channel blocked");
-  }
-
-  if (SingleOpen(protocol::msg::SingleTofPayload::LEFT_REAR)) {
-    INFO("left rear tof opened successfully");
-  } else {
-    ERROR(
-      "left rear tof opened failed,can not receive enable on ack "
-      ",maybe can0 channel blocked");
-  }
-
-  if (SingleOpen(protocol::msg::SingleTofPayload::RIGHT_REAR)) {
-    INFO("right rear tof opened successfully");
-  } else {
-    ERROR(
-      "right rear tof opened failed,can not receive enable on ack "
-      ",maybe can0 channel blocked");
-  }
-
-  opened_ = tof_opened_left_head && tof_opened_right_head &&
-    tof_opened_left_rear && tof_opened_right_rear;
-  if (opened_ == true) {
-    INFO("all tofs opened successfully");
-  }
-  return opened_;
+  return status_ok;
 }
 
 
 bool cyberdog::sensor::TofCarpo::Start_()
 {
-  opened_ = tof_opened_left_head && tof_opened_right_head &&
-    tof_opened_left_rear && tof_opened_right_rear;
-  if (opened_ == false) {
-    Open_();
+  bool status_ok = true;
+  if (!simulator_) {
+    for (auto & tof : tof_map_) {
+      if (tof.second->GetData()->data_received) {
+        INFO("[%s] started successfully", tof.first.c_str());
+        continue;
+      }
+      if (!IsSingleStarted(tof.first)) {
+        ERROR("[%s] started failed,can not receive data ", tof.first.c_str());
+        status_ok = false;
+      } else {
+        INFO("[%s] started successfully", tof.first.c_str());
+      }
+    }
   }
-  if (SingleStart(protocol::msg::SingleTofPayload::LEFT_HEAD)) {
-    INFO("left head tof started successfully");
-  } else {
-    ERROR(
-      "left head tof started failed,"
-      "can not receive tof datas"
-      ", maybe the mcu program crashes"
-      " or the ultrasonic hardware is damaged");
-  }
-
-  if (SingleStart(protocol::msg::SingleTofPayload::RIGHT_HEAD)) {
-    INFO("right head started successfully");
-  } else {
-    ERROR(
-      "right head tof started failed,"
-      "can not receive tof datas"
-      ", maybe the mcu program crashes"
-      " or the ultrasonic hardware is damaged");
-  }
-
-  if (SingleStart(protocol::msg::SingleTofPayload::LEFT_REAR)) {
-    INFO("left rear tof started successfully");
-  } else {
-    ERROR(
-      "left rear tof started failed,"
-      "can not receive tof datas"
-      ", maybe the mcu program crashes"
-      " or the ultrasonic hardware is damaged");
-  }
-
-  if (SingleStart(protocol::msg::SingleTofPayload::RIGHT_REAR)) {
-    INFO("right rear tof started successfully");
-  } else {
-    ERROR(
-      "right rear tof started failed,"
-      "can not receive tof datas"
-      ", maybe the mcu program crashes"
-      " or the ultrasonic hardware is damaged");
-  }
-
-  started_ = tof_started_left_head && tof_started_right_head &&
-    tof_started_left_rear && tof_started_right_rear;
-  if (started_ == true) {
-    INFO("all tofs started successfully");
-  }
-  return started_;
+  is_working_ = status_ok;
+  return status_ok;
 }
 
 bool cyberdog::sensor::TofCarpo::Stop_()
 {
-  if (SingleStop(protocol::msg::SingleTofPayload::LEFT_HEAD)) {
-    INFO("left head tof stoped successfully");
-  } else {
-    ERROR("left head tof stoped failed");
+  bool status_ok = true;
+  if (!simulator_) {
+    for (auto & tof : tof_map_) {
+      int retry = 0;
+      bool single_status_ok = true;
+      while (retry++ < 3) {
+        tof.second->Operate("enable_off", std::vector<uint8_t>{});
+        if (tof.second->GetData()->enable_off_signal.WaitFor(1000)) {
+          if (IsSingleClosed(tof.first)) {
+            INFO("[%s] stoped successfully", tof.first.c_str());
+            single_status_ok = true;
+            break;
+          }
+          ERROR(
+            "[%s] stoped failed,can not receive enable off ack,time[%d]",
+            tof.first.c_str(), retry);
+          single_status_ok = false;
+        } else {
+          if (tof.second->GetData()->enable_off_ack == 0) {
+            INFO("[%s] stoped successfully", tof.first.c_str());
+            single_status_ok = true;
+            break;
+          } else {
+            single_status_ok = false;
+            ERROR(
+              "[%s] stoped failed, get ack 0x%x!", tof.first.c_str(),
+              tof.second->GetData()->enable_off_ack);
+          }
+        }
+      }
+      if (!single_status_ok) {status_ok = false;}
+    }
   }
-  if (SingleStop(protocol::msg::SingleTofPayload::RIGHT_HEAD)) {
-    INFO("right head tof stoped successfully");
-  } else {
-    ERROR("right head tofstoped failed");
-  }
-
-  if (SingleStop(protocol::msg::SingleTofPayload::LEFT_REAR)) {
-    INFO("left rear tof stoped successfully");
-  } else {
-    ERROR("left rear tof stoped failed");
-  }
-  if (SingleStop(protocol::msg::SingleTofPayload::RIGHT_REAR)) {
-    INFO("right rear tof stoped successfully");
-  } else {
-    ERROR("right rear tof stoped failed");
-  }
-
-  stopped_ = tof_started_left_head == 0 && tof_started_right_head == 0 &&
-    tof_started_left_rear == 0 && tof_started_right_rear == 0;
-  if (stopped_ == true) {
-    INFO("all tofs stopped successfully");
-  }
-  return stopped_;
+  is_working_ = (status_ok ? false : true);
+  return status_ok;
 }
 
 bool cyberdog::sensor::TofCarpo::Close_()
 {
-  closed_ = stopped_;
-  if (closed_ == true) {
-    INFO("all tofs closed successfully");
-  } else {
-    ERROR("all tofs closed failed");
+  bool status_ok = true;
+  if (!simulator_) {
+    for (auto & tof : tof_map_) {
+      if (IsSingleClosed(tof.first)) {
+        INFO("[%s] closed successfully", tof.first.c_str());
+      } else {
+        status_ok = false;
+        INFO("[%s] closed failed", tof.first.c_str());
+      }
+    }
   }
-  return closed_;
+  is_working_ = (status_ok ? false : true);
+  return status_ok;
 }
 
 bool cyberdog::sensor::TofCarpo::SelfCheck()
 {
-  return started_;
+  return is_working_;
 }
 
 bool cyberdog::sensor::TofCarpo::LowPower()
@@ -237,462 +244,9 @@ bool cyberdog::sensor::TofCarpo::LowPower()
   return true;
 }
 
-
-bool cyberdog::sensor::TofCarpo::SingleStart(uint8_t serial_number)
+void cyberdog::sensor::TofCarpo::SimulationThread()
 {
-  switch (serial_number) {
-    // left head
-    case protocol::msg::SingleTofPayload::LEFT_HEAD: {
-        time_t time_started_delay = time(nullptr);
-        while (tof_started_left_head == false &&
-          difftime(time(nullptr), time_started_delay) < 2.0f)
-        {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-          INFO(
-            "difftime = %2f ",
-            difftime(time(nullptr), time_started_delay));
-        }
-        if (tof_started_left_head == false) {
-          ERROR("left head tof  started failed ");
-        } else {
-          INFO("left head tof started successfully ");
-        }
-        return tof_started_left_head;
-      }
-    // right head
-    case protocol::msg::SingleTofPayload::RIGHT_HEAD: {
-        time_t time_started_delay = time(nullptr);
-        while (tof_started_right_head == false &&
-          difftime(time(nullptr), time_started_delay) < 2.0f)
-        {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-          INFO(
-            "difftime = %2f ",
-            difftime(time(nullptr), time_started_delay));
-        }
-        if (tof_started_right_head == false) {
-          ERROR("right head tof  started failed ");
-        } else {
-          INFO("right head tof started successfully ");
-        }
-        return tof_started_right_head;
-      }
-    // left rear
-    case protocol::msg::SingleTofPayload::LEFT_REAR: {
-        time_t time_started_delay = time(nullptr);
-        while (tof_started_left_rear == false &&
-          difftime(time(nullptr), time_started_delay) < 2.0f)
-        {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-          INFO(
-            "difftime = %2f ",
-            difftime(time(nullptr), time_started_delay));
-        }
-        if (tof_started_left_rear == false) {
-          ERROR("left rear tof  started failed ");
-        } else {
-          INFO("left rear tof started successfully ");
-        }
-        return tof_started_left_rear;
-      }
-    // right rear
-    case protocol::msg::SingleTofPayload::RIGHT_REAR: {
-        time_t time_started_delay = time(nullptr);
-        while (tof_started_right_rear == false &&
-          difftime(time(nullptr), time_started_delay) < 2.0f)
-        {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-          INFO(
-            "difftime = %2f ",
-            difftime(time(nullptr), time_started_delay));
-        }
-        if (tof_started_right_rear == false) {
-          ERROR("right rear tof  started failed ");
-        } else {
-          INFO("right rear tof started successfully ");
-        }
-        return tof_started_right_rear;
-      }
-    default: {
-        return false;
-      }
-  }
-}
-
-bool cyberdog::sensor::TofCarpo::SingleStop(uint8_t serial_number)
-{
-  switch (serial_number) {
-    // left head
-    case protocol::msg::SingleTofPayload::LEFT_HEAD: {
-        tof_can_left_head->BREAK_VAR(tof_can_left_head->GetData()->data_array);
-        tof_can_left_head->BREAK_VAR(tof_can_left_head->GetData()->data_clock);
-        tof_can_left_head->BREAK_VAR(tof_can_left_head->GetData()->intensity_array);
-        tof_can_left_head->LINK_VAR(tof_can_left_head->GetData()->enable_off_ack);
-        tof_can_left_head->Operate(
-          "enable_off", std::vector<uint8_t>{});
-        INFO_STREAM("!!!!!!send left head tof enable_off cmd.!!!!!");
-        time_t time_head = time(nullptr);
-        while (tof_started_left_head == true && difftime(time(nullptr), time_head) < 2.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-        }
-        return !tof_started_left_head;
-      }
-    // right head
-    case protocol::msg::SingleTofPayload::RIGHT_HEAD: {
-        tof_can_right_head->BREAK_VAR(tof_can_right_head->GetData()->data_array);
-        tof_can_right_head->BREAK_VAR(tof_can_right_head->GetData()->data_clock);
-        tof_can_right_head->BREAK_VAR(tof_can_right_head->GetData()->intensity_array);
-        tof_can_right_head->LINK_VAR(tof_can_right_head->GetData()->enable_off_ack);
-        tof_can_right_head->Operate(
-          "enable_off", std::vector<uint8_t>{});
-        INFO_STREAM("!!!!!!send right head tof enable_off cmd.!!!!!");
-        time_t time_head = time(nullptr);
-        while (tof_started_right_head == true && difftime(time(nullptr), time_head) < 2.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-        }
-        return !tof_started_right_head;
-      }
-
-    // left rear
-    case protocol::msg::SingleTofPayload::LEFT_REAR: {
-        tof_can_left_rear->BREAK_VAR(tof_can_left_rear->GetData()->data_array);
-        tof_can_left_rear->BREAK_VAR(tof_can_left_rear->GetData()->data_clock);
-        tof_can_left_rear->BREAK_VAR(tof_can_left_rear->GetData()->intensity_array);
-        tof_can_left_rear->LINK_VAR(tof_can_left_rear->GetData()->enable_off_ack);
-        tof_can_left_rear->Operate(
-          "enable_off", std::vector<uint8_t>{});
-        INFO_STREAM("!!!!!!send left rear tof enable_off cmd.!!!!!");
-        time_t time_head = time(nullptr);
-        while (tof_started_left_rear == true && difftime(time(nullptr), time_head) < 2.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-        }
-        return !tof_started_left_rear;
-      }
-    // right head
-    case protocol::msg::SingleTofPayload::RIGHT_REAR: {
-        tof_can_right_rear->BREAK_VAR(tof_can_right_rear->GetData()->data_array);
-        tof_can_right_rear->BREAK_VAR(tof_can_right_rear->GetData()->data_clock);
-        tof_can_right_rear->BREAK_VAR(tof_can_right_rear->GetData()->intensity_array);
-        tof_can_right_rear->LINK_VAR(tof_can_right_rear->GetData()->enable_off_ack);
-        tof_can_right_rear->Operate(
-          "enable_off", std::vector<uint8_t>{});
-        INFO_STREAM("!!!!!!send right rear tof enable_off cmd.!!!!!");
-        time_t time_head = time(nullptr);
-        while (tof_started_right_rear == true && difftime(time(nullptr), time_head) < 2.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-        }
-        return !tof_started_right_rear;
-      }
-
-
-    default: {
-        return false;
-      }
-  }
-}
-
-bool cyberdog::sensor::TofCarpo::SingleOpen(uint8_t serial_number)
-{
-  switch (serial_number) {
-    // LEFT_HEAD
-    case protocol::msg::SingleTofPayload::LEFT_HEAD: {
-        tof_opened_left_head = false;
-        auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
-        auto path = local_share_dir + std::string("/toml_config/sensors/tof_left_head.toml");
-        if (access(path.c_str(), F_OK) != 0) {
-          ERROR("%s do not exist!", path.c_str());
-          return tof_opened_left_head;
-        }
-        tof_can_left_head = std::make_shared<EVM::Protocol<tof_can>>(path, false);
-        tof_can_left_head->SetDataCallback(
-          std::bind(
-            &cyberdog::sensor::TofCarpo::
-            left_head_callback, this, std::placeholders::_1, std::placeholders::_2));
-        tof_can_left_head->LINK_VAR(tof_can_left_head->GetData()->enable_on_ack);
-        tof_can_left_head->Operate(
-          "enable_on", std::vector<uint8_t>{});
-        time_t time_head = time(nullptr);
-        while (tof_opened_left_head == false && difftime(time(nullptr), time_head) < 4.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-        }
-        return tof_opened_left_head;
-      }
-    // RIGHT_HEAD
-    case protocol::msg::SingleTofPayload::RIGHT_HEAD: {
-        tof_opened_right_head = false;
-        auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
-        auto path = local_share_dir + std::string("/toml_config/sensors/tof_right_head.toml");
-        if (access(path.c_str(), F_OK) != 0) {
-          ERROR("%s do not exist!", path.c_str());
-          return tof_opened_right_head;
-        }
-        tof_can_right_head = std::make_shared<EVM::Protocol<tof_can>>(path, false);
-        tof_can_right_head->SetDataCallback(
-          std::bind(
-            &cyberdog::sensor::TofCarpo::right_head_callback,
-            this, std::placeholders::_1, std::placeholders::_2));
-        tof_can_right_head->LINK_VAR(tof_can_right_head->GetData()->enable_on_ack);
-        tof_can_right_head->Operate(
-          "enable_on", std::vector<uint8_t>{});
-        time_t time_rear = time(nullptr);
-        while (tof_opened_right_head == false && difftime(time(nullptr), time_rear) < 4.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-        }
-        return tof_opened_right_head;
-      }
-    case protocol::msg::SingleTofPayload::LEFT_REAR: {
-        tof_opened_left_rear = false;
-        auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
-        auto path = local_share_dir + std::string("/toml_config/sensors/tof_left_rear.toml");
-        if (access(path.c_str(), F_OK) != 0) {
-          ERROR("%s do not exist!", path.c_str());
-          ERROR(
-            "fail to open left rear tof,tof_opened_left_rear=   %d ",
-            static_cast<int>(tof_opened_left_rear));
-          return tof_opened_left_rear;
-        }
-        tof_can_left_rear = std::make_shared<EVM::Protocol<tof_can>>(path, false);
-        tof_can_left_rear->SetDataCallback(
-          std::bind(
-            &cyberdog::sensor::TofCarpo::left_rear_callback,
-            this, std::placeholders::_1, std::placeholders::_2));
-        tof_can_left_rear->LINK_VAR(tof_can_left_rear->GetData()->enable_on_ack);
-        tof_can_left_rear->Operate(
-          "enable_on", std::vector<uint8_t>{});
-        time_t time_rear = time(nullptr);
-        while (tof_opened_left_rear == false && difftime(time(nullptr), time_rear) < 4.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-          // RCLCPP_INFO(rclcpp::get_logger("cyberdog_tof"),
-          // "difftime = %2f ",difftime(time(nullptr), time_rear));
-        }
-        return tof_opened_left_rear;
-      }
-    case protocol::msg::SingleTofPayload::RIGHT_REAR: {
-        tof_opened_right_rear = false;
-        auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
-        auto path = local_share_dir + std::string("/toml_config/sensors/tof_right_rear.toml");
-        if (access(path.c_str(), F_OK) != 0) {
-          ERROR("%s do not exist!", path.c_str());
-          return tof_opened_right_rear;
-        }
-        tof_can_right_rear = std::make_shared<EVM::Protocol<tof_can>>(path, false);
-        tof_can_right_rear->SetDataCallback(
-          std::bind(
-            &cyberdog::sensor::TofCarpo::right_rear_callback,
-            this, std::placeholders::_1, std::placeholders::_2));
-        tof_can_right_rear->LINK_VAR(tof_can_right_rear->GetData()->enable_on_ack);
-        tof_can_right_rear->Operate(
-          "enable_on", std::vector<uint8_t>{});
-        time_t time_rear = time(nullptr);
-        while (tof_opened_right_rear == false && difftime(time(nullptr), time_rear) < 4.0f) {
-          std::this_thread::sleep_for(std::chrono::microseconds(30000));
-        }
-        return tof_opened_right_rear;
-      }
-    default: {
-        return false;
-      }
-  }
-}
-
-void cyberdog::sensor::TofCarpo::left_head_callback(
-  std::string & name,
-  std::shared_ptr<cyberdog::sensor::tof_can> data)
-{
-  INFO_STREAM_ONCE("~~~~ left head callback ~~~~~ ");
-  INFO_STREAM_ONCE("    name ==   " << name);
-  if (name == "enable_on_ack") {
-    INFO_STREAM_ONCE(" got left head tofs callback " << name);
-    tof_opened_left_head = true;
-    tof_can_left_head->BREAK_VAR(tof_can_left_head->GetData()->enable_on_ack);
-    tof_can_left_head->LINK_VAR(tof_can_left_head->GetData()->data_array);
-    tof_can_left_head->LINK_VAR(tof_can_left_head->GetData()->intensity_array);
-    tof_can_left_head->LINK_VAR(tof_can_left_head->GetData()->data_clock);
-  } else if (name == "enable_off_ack") {
-    INFO_STREAM_ONCE("got left head tofs callback" << name);
-    tof_opened_left_head = false;
-    tof_started_left_head = false;
-  } else {
-    tof_started_left_head = true;
-    const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
-    std::vector<float> obj_data;
-    std::vector<float> obj_intensity;
-    for (size_t i = 0; i < datanum; i++) {
-      obj_data.push_back(
-        (data->data_array[i] * 2.0f + TOFOFFSET) *
-        protocol::msg::SingleTofPayload::SCALE_FACTOR);
-      obj_intensity.push_back(
-        data->intensity_array[i]);
-    }
-
-    struct timespec time_stu;
-    clock_gettime(CLOCK_REALTIME, &time_stu);
-    // left head
-    tof_payload_left_head->header.frame_id = std::string("left_head");
-    tof_payload_left_head->header.stamp.nanosec = time_stu.tv_nsec;
-    tof_payload_left_head->header.stamp.sec = time_stu.tv_sec;
-    tof_payload_left_head->tof_position = protocol::msg::SingleTofPayload::LEFT_HEAD;
-    tof_payload_left_head->data = obj_data;
-    tof_payload_left_head->intensity = obj_intensity;
-    tof_payload_left_head->data_available = tof_started_left_head;
-    head_tof_payload->left_head = *tof_payload_left_head;
-    head_tof_payload->right_head = *tof_payload_right_head;
-    // publish msg
-    if (head_payload_callback_ != nullptr) {
-      head_payload_callback_(head_tof_payload);
-      INFO_ONCE("head tofs published successfully");
-    } else {
-      ERROR_ONCE("head tofs published failed");
-    }
-  }
-}
-
-void cyberdog::sensor::TofCarpo::right_head_callback(
-  std::string & name,
-  std::shared_ptr<cyberdog::sensor::tof_can> data)
-{
-  INFO_STREAM_ONCE("~~~~ right head callback ~~~~~ ");
-  INFO_STREAM_ONCE("    name ==   " << name);
-  if (name == "enable_on_ack") {
-    INFO_STREAM_ONCE(" got right head tofs callback " << name);
-    tof_opened_right_head = true;
-    tof_can_right_head->BREAK_VAR(tof_can_right_head->GetData()->enable_on_ack);
-    tof_can_right_head->LINK_VAR(tof_can_right_head->GetData()->data_array);
-    tof_can_right_head->LINK_VAR(tof_can_right_head->GetData()->intensity_array);
-    tof_can_right_head->LINK_VAR(tof_can_right_head->GetData()->data_clock);
-  } else if (name == "enable_off_ack") {
-    INFO_STREAM_ONCE("got right head tofs callback" << name);
-    tof_opened_right_head = false;
-    tof_started_right_head = false;
-  } else {
-    tof_started_right_head = true;
-    const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
-    std::vector<float> obj_data;
-    std::vector<float> obj_intensity;
-    for (size_t i = 0; i < datanum; i++) {
-      obj_data.push_back(
-        (data->data_array[i] * 2.0f + TOFOFFSET) *
-        protocol::msg::SingleTofPayload::SCALE_FACTOR);
-      obj_intensity.push_back(
-        data->intensity_array[i]);
-    }
-
-    struct timespec time_stu;
-    clock_gettime(CLOCK_REALTIME, &time_stu);
-    // right head
-    tof_payload_right_head->header.frame_id = std::string("right_head");
-    tof_payload_right_head->header.stamp.nanosec = time_stu.tv_nsec;
-    tof_payload_right_head->header.stamp.sec = time_stu.tv_sec;
-    tof_payload_right_head->tof_position = protocol::msg::SingleTofPayload::RIGHT_HEAD;
-    tof_payload_right_head->data = obj_data;
-    tof_payload_right_head->intensity = obj_intensity;
-    tof_payload_right_head->data_available = tof_started_right_head;
-    head_tof_payload->right_head = *tof_payload_right_head;
-    // publish msg
-  }
-}
-
-void cyberdog::sensor::TofCarpo::left_rear_callback(
-  std::string & name,
-  std::shared_ptr<cyberdog::sensor::tof_can> data)
-{
-  INFO_STREAM_ONCE("~~~~ left rear callback ~~~~~ ");
-  INFO_STREAM_ONCE("    name ==   " << name);
-  if (name == "enable_on_ack") {
-    INFO_STREAM_ONCE(" got left rear tofs callback " << name);
-    tof_opened_left_rear = true;
-    tof_can_left_rear->BREAK_VAR(tof_can_left_rear->GetData()->enable_on_ack);
-    tof_can_left_rear->LINK_VAR(tof_can_left_rear->GetData()->data_array);
-    tof_can_left_rear->LINK_VAR(tof_can_left_rear->GetData()->intensity_array);
-    tof_can_left_rear->LINK_VAR(tof_can_left_rear->GetData()->data_clock);
-
-  } else if (name == "enable_off_ack") {
-    INFO_STREAM_ONCE("got left rear tofs callback" << name);
-    tof_opened_left_rear = false;
-    tof_started_left_rear = false;
-  } else {
-    tof_started_left_rear = true;
-    const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
-    std::vector<float> obj_data;
-    std::vector<float> obj_intensity;
-    for (size_t i = 0; i < datanum; i++) {
-      obj_data.push_back(
-        (data->data_array[i] * 2.0f + TOFOFFSET) *
-        protocol::msg::SingleTofPayload::SCALE_FACTOR);
-      obj_intensity.push_back(
-        data->intensity_array[i]);
-    }
-
-    struct timespec time_stu;
-    clock_gettime(CLOCK_REALTIME, &time_stu);
-    // left rear
-    tof_payload_left_rear->header.frame_id = std::string("left_rear");
-    tof_payload_left_rear->header.stamp.nanosec = time_stu.tv_nsec;
-    tof_payload_left_rear->header.stamp.sec = time_stu.tv_sec;
-    tof_payload_left_rear->tof_position = protocol::msg::SingleTofPayload::LEFT_REAR;
-    tof_payload_left_rear->data = obj_data;
-    tof_payload_left_rear->intensity = obj_intensity;
-    tof_payload_left_rear->data_available = tof_started_left_rear;
-    rear_tof_payload->left_rear = *tof_payload_left_rear;
-    rear_tof_payload->right_rear = *tof_payload_right_rear;
-    // publish msg
-    if (rear_payload_callback_ != nullptr) {
-      rear_payload_callback_(rear_tof_payload);
-      INFO_ONCE("rear tofs published successfully");
-    } else {
-      ERROR_ONCE("rear tofs published failed");
-    }
-  }
-}
-
-void cyberdog::sensor::TofCarpo::right_rear_callback(
-  std::string & name,
-  std::shared_ptr<cyberdog::sensor::tof_can> data)
-{
-  INFO_STREAM_ONCE("~~~~ right rear callback ~~~~~ ");
-  INFO_STREAM_ONCE("    name ==   " << name);
-  if (name == "enable_on_ack") {
-    INFO_STREAM_ONCE(" got right rear tofs callback " << name);
-    tof_opened_right_rear = true;
-    tof_can_right_rear->BREAK_VAR(tof_can_right_rear->GetData()->enable_on_ack);
-    tof_can_right_rear->LINK_VAR(tof_can_right_rear->GetData()->data_array);
-    tof_can_right_rear->LINK_VAR(tof_can_right_rear->GetData()->intensity_array);
-    tof_can_right_rear->LINK_VAR(tof_can_right_rear->GetData()->data_clock);
-  } else if (name == "enable_off_ack") {
-    INFO_STREAM_ONCE("got right rear tofs callback" << name);
-    tof_opened_right_rear = false;
-    tof_started_right_rear = false;
-  } else {
-    tof_started_right_rear = true;
-    const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
-    std::vector<float> obj_data;
-    std::vector<float> obj_intensity;
-    for (size_t i = 0; i < datanum; i++) {
-      obj_data.push_back(
-        (data->data_array[i] * 2.0f + TOFOFFSET) *
-        protocol::msg::SingleTofPayload::SCALE_FACTOR);
-      obj_intensity.push_back(
-        data->intensity_array[i]);
-    }
-
-    struct timespec time_stu;
-    clock_gettime(CLOCK_REALTIME, &time_stu);
-    // right rear
-    tof_payload_right_rear->header.frame_id = std::string("right_rear");
-    tof_payload_right_rear->header.stamp.nanosec = time_stu.tv_nsec;
-    tof_payload_right_rear->header.stamp.sec = time_stu.tv_sec;
-    tof_payload_right_rear->tof_position = protocol::msg::SingleTofPayload::RIGHT_REAR;
-    tof_payload_right_rear->data = obj_data;
-    tof_payload_right_rear->intensity = obj_intensity;
-    tof_payload_right_rear->data_available = tof_started_right_rear;
-    rear_tof_payload->right_rear = *tof_payload_right_rear;
-    // publish msg
-  }
-}
-
-void cyberdog::sensor::TofCarpo::UpdateSimulationData()
-{
-  while (true) {
+  while (is_working_) {
     if (!rclcpp::ok()) {
       WARN("[cyberdog_tof]: !rclcpp::ok()");
       break;
@@ -707,20 +261,121 @@ void cyberdog::sensor::TofCarpo::UpdateSimulationData()
     auto tof_payload = std::make_shared<protocol::msg::SingleTofPayload>();
     struct timespec time_stu;
     clock_gettime(CLOCK_REALTIME, &time_stu);
-    tof_payload->header.frame_id = std::string("simulator");
     tof_payload->header.stamp.nanosec = time_stu.tv_nsec;
     tof_payload->header.stamp.sec = time_stu.tv_sec;
-    tof_payload->tof_position = protocol::msg::SingleTofPayload::LEFT_HEAD;
     tof_payload->data = obj;
     tof_payload->data_available = false;
-    head_tof_payload->left_head = *tof_payload;
-    head_tof_payload->right_head = *tof_payload;
-    rear_tof_payload->left_rear = *tof_payload;
-    rear_tof_payload->right_rear = *tof_payload;
-    head_payload_callback_(head_tof_payload);
-    rear_payload_callback_(rear_tof_payload);
+
+    for (auto & tof : tof_map_) {
+      tof_payload->header.frame_id = tof.first;
+      if (single_payload_callback_ != nullptr) {
+        single_payload_callback_(tof_payload);
+      }
+    }
     INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
   }
 }
+bool cyberdog::sensor::TofCarpo::IsSingleStarted(const std::string & name)
+{
+  if (tof_map_.find(name) == tof_map_.end()) {
+    INFO("tof map not find [%s]", name.c_str());
+    return false;
+  }
+  tof_map_.at(name)->GetData()->waiting_data = true;
+  bool is_started = tof_map_.at(name)->GetData()->data_signal.WaitFor(2000) ? false : true;
+  tof_map_.at(name)->GetData()->waiting_data = false;
+  return is_started;
+}
 
+bool cyberdog::sensor::TofCarpo::IsSingleClosed(const std::string & name)
+{
+  if (tof_map_.find(name) == tof_map_.end()) {
+    INFO("tof map not find [%s]", name.c_str());
+    return false;
+  }
+  tof_map_.at(name)->GetData()->waiting_data = true;
+  bool is_closed = tof_map_.at(name)->GetData()->data_signal.WaitFor(2000) ? true : false;
+  tof_map_.at(name)->GetData()->waiting_data = false;
+  tof_map_.at(name)->GetData()->data_received = false;
+  return is_closed;
+}
+
+void cyberdog::sensor::TofCarpo::TofMsgCallback(
+  EVM::DataLabel & label,
+  std::shared_ptr<cyberdog::sensor::TofMsg> data)
+{
+  if (tof_map_.find(label.group_name) != tof_map_.end()) {
+    if (label.name == "enable_on_ack") {
+      if (data->enable_on_ack != 0) {
+        ERROR("%s,enable_on ack err 0x:%x", label.group_name.c_str(), data->enable_on_ack);
+      }
+      tof_map_.at(label.group_name)->GetData()->enable_on_signal.Give();
+    } else if (label.name == "enable_off_ack") {
+      if (data->enable_off_ack != 0) {
+        ERROR("%s,enable_off ack err 0x:%x", label.group_name.c_str(), data->enable_off_ack);
+      }
+      tof_map_.at(label.group_name)->GetData()->enable_off_signal.Give();
+    } else if (label.name == "data") {
+      if (tof_map_.at(label.group_name)->GetData()->waiting_data) {
+        tof_map_.at(label.group_name)->GetData()->data_signal.Give();
+      }
+      if (!tof_map_.at(label.group_name)->GetData()->data_received) {
+        tof_map_.at(label.group_name)->GetData()->data_received = true;
+      }
+      const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
+      std::vector<float> obj_data;
+      std::vector<float> obj_intensity;
+      for (size_t i = 0; i < datanum; i++) {
+        obj_data.push_back(
+          (data->data_array[i] * 2.0f + kTofOffset) *
+          protocol::msg::SingleTofPayload::SCALE_FACTOR);
+        obj_intensity.push_back(
+          data->intensity_array[i]);
+      }
+
+      struct timespec time_stu;
+      clock_gettime(CLOCK_REALTIME, &time_stu);
+      if (tof_data_map_.find(label.group_name) == tof_data_map_.end()) {
+        ERROR("data map no msg name %s", label.group_name.c_str());
+      } else {
+        tof_map_.at(label.group_name)->GetData()->rx_cnt++;
+        if (!label.is_full) {
+          tof_map_.at(label.group_name)->GetData()->rx_error_cnt++;
+        }
+
+        // msg check
+        auto now = std::chrono::system_clock::now();
+        auto duration =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+          now - tof_map_.at(label.group_name)->GetData()->time_start);
+        if (duration.count() >= kMsgCheckInterval) {
+          tof_map_.at(label.group_name)->GetData()->time_start = std::chrono::system_clock::now();
+          if (tof_map_.at(label.group_name)->GetData()->rx_error_cnt > 0) {
+            WARN(
+              "[%s] get error data:[%d]/[%d] ,interval[%d] !",
+              label.group_name.c_str(), tof_map_.at(
+                label.group_name)->GetData()->rx_error_cnt, tof_map_.at(
+                label.group_name)->GetData()->rx_cnt, kMsgCheckInterval);
+            tof_map_.at(label.group_name)->GetData()->rx_cnt = 0;
+            tof_map_.at(label.group_name)->GetData()->rx_error_cnt = 0;
+          }
+        }
+
+        tof_data_map_.at(label.group_name)->header.frame_id = label.group_name;
+        tof_data_map_.at(label.group_name)->header.stamp.nanosec = time_stu.tv_nsec;
+        tof_data_map_.at(label.group_name)->header.stamp.sec = time_stu.tv_sec;
+        tof_data_map_.at(label.group_name)->data = obj_data;
+        tof_data_map_.at(label.group_name)->intensity = obj_intensity;
+        tof_data_map_.at(label.group_name)->data_available = label.is_full;
+        if (single_payload_callback_ != nullptr) {
+          single_payload_callback_(tof_data_map_.at(label.group_name));
+        }
+      }
+    } else {
+      WARN("unknown msg name %s", label.name.c_str());
+    }
+  } else {
+    ERROR("can drive error,error name %s", label.name.c_str());
+  }
+}
 PLUGINLIB_EXPORT_CLASS(cyberdog::sensor::TofCarpo, cyberdog::sensor::TofBase)

@@ -58,7 +58,7 @@ void cyberdog::sensor::SensorManager::Config()
   INFO("lidar Configuring beginning");
   lidar_publisher_ = node_ptr_->create_publisher<ScanMsg>(
     "scan",
-    rclcpp::SensorDataQoS());
+    rclcpp::SystemDefaultsQoS());
   std::shared_ptr<pluginlib::ClassLoader<cyberdog::sensor::LidarBase>> lidar_classloader;
   lidar_classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::LidarBase>>(
     "cyberdog_lidar", "cyberdog::sensor::LidarBase");
@@ -93,13 +93,15 @@ void cyberdog::sensor::SensorManager::Config()
   tof_classloader = std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::TofBase>>(
     "cyberdog_tof", "cyberdog::sensor::TofBase");
   tof_ = tof_classloader->createSharedInstance("cyberdog::sensor::TofCarpo");
-  tof_->SetHeadPayloadCallback(
+  head_tof_["left_head_tof"] = false;
+  head_tof_["right_head_tof"] = false;
+  rear_tof_["left_rear_tof"] = false;
+  rear_tof_["right_rear_tof"] = false;
+  head_tof_payload = std::make_shared<protocol::msg::HeadTofPayload>();
+  rear_tof_payload = std::make_shared<protocol::msg::RearTofPayload>();
+  tof_->SetSinglePayloadCallback(
     std::bind(
-      &SensorManager::head_tof_payload_callback, this,
-      std::placeholders::_1));
-  tof_->SetRearPayloadCallback(
-    std::bind(
-      &SensorManager::rear_tof_payload_callback, this,
+      &SensorManager::SingleTofPayloadCallback, this,
       std::placeholders::_1));
 
 
@@ -242,11 +244,7 @@ int32_t cyberdog::sensor::SensorManager::OnLowPower()
 {
   if (!this->lidar_->Stop()) {
     ERROR("Lidar stop fail.");
-    if (!sensor_self_check_ptr->IsJump("lidar")) {
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
-    } else {
-      INFO("Jump lidar switch low-power state error.");
-    }
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
   }
   INFO("Lidar stop success.");
   // if (!this->gps_->Stop()) {
@@ -256,20 +254,12 @@ int32_t cyberdog::sensor::SensorManager::OnLowPower()
   // INFO("Gps stop success.");
   if (!this->ultrasonic_->Stop()) {
     ERROR("Ultrasonic stop fail.");
-    if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
-    } else {
-      INFO("Jump ultrasonic switch low-power state error.");
-    }
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
   }
   INFO("Ultrasonic stop success.");
   if (!this->tof_->Stop()) {
     ERROR("Tof stop fail.");
-    if (!sensor_self_check_ptr->IsJump("tof")) {
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
-    } else {
-      INFO("Jump tof switch low-power state error.");
-    }
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
   }
   return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kOK);
 }
@@ -315,11 +305,7 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   INFO("SensorManager Running begin");
   if (!this->lidar_->Start()) {
     ERROR("Lidar start fail.");
-    if (!sensor_self_check_ptr->IsJump("lidar")) {
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
-    } else {
-      INFO("Jump lidar enter active state error.");
-    }
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
   }
   INFO("Lidar start success.");
   // if (!this->gps_->Start()) {
@@ -329,20 +315,12 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   // INFO("Gps start success.");
   if (!this->ultrasonic_->Start()) {
     ERROR("Ultrasonic start fail.");
-    if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
-    } else {
-      INFO("Jump ultrasonic enter active state error.");
-    }
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
   }
   INFO("Ultrasonic start success.");
   if (!this->tof_->Start()) {
     ERROR("Tof start fail.");
-    if (!sensor_self_check_ptr->IsJump("tof")) {
-      return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
-    } else {
-      INFO("Jump tof enter active state error.");
-    }
+    return code_ptr_->GetKeyCode(cyberdog::system::KeyCode::kFailed);
   }
   INFO("Tof start success.");
   INFO("Sensor manager start success.");
@@ -471,18 +449,55 @@ void cyberdog::sensor::SensorManager::ultrasonic_payload_callback(
   ultrasonic_publisher_->publish(*msg);
 }
 
-void cyberdog::sensor::SensorManager::head_tof_payload_callback(
-  std::shared_ptr<protocol::msg::HeadTofPayload> msg)
+void cyberdog::sensor::SensorManager::SingleTofPayloadCallback(
+  std::shared_ptr<protocol::msg::SingleTofPayload> msg)
 {
-  head_tof_publisher_->publish(*msg);
+  if (msg->header.frame_id == "left_rear_tof" || msg->header.frame_id == "right_rear_tof") {
+    if (rear_tof_.find(msg->header.frame_id) == head_tof_.end()) {
+      WARN("rear tof map no name [%s] tof msg", msg->header.frame_id.c_str());
+      return;
+    }
+    std::unique_lock<std::mutex> lock(rear_tof_lock_);
+    if (msg->header.frame_id == "left_rear_tof") {
+      rear_tof_.at(msg->header.frame_id) = true;
+      rear_tof_payload->left_rear = *msg;
+      rear_tof_payload->left_rear.header.frame_id = "left_rear";
+      rear_tof_payload->left_rear.tof_position = protocol::msg::SingleTofPayload::LEFT_REAR;
+    } else {
+      rear_tof_.at(msg->header.frame_id) = true;
+      rear_tof_payload->right_rear = *msg;
+      rear_tof_payload->right_rear.header.frame_id = "right_rear";
+      rear_tof_payload->right_rear.tof_position = protocol::msg::SingleTofPayload::RIGHT_REAR;
+    }
+    if (rear_tof_.at("left_rear_tof") && rear_tof_.at("right_rear_tof")) {
+      rear_tof_publisher_->publish(*rear_tof_payload);
+      rear_tof_.at("left_rear_tof") = false;
+      rear_tof_.at("right_rear_tof") = false;
+    }
+  } else if (msg->header.frame_id == "left_head_tof" || msg->header.frame_id == "right_head_tof") {
+    if (head_tof_.find(msg->header.frame_id) == head_tof_.end()) {
+      WARN("head tof map no name [%s] tof msg", msg->header.frame_id.c_str());
+      return;
+    }
+    std::unique_lock<std::mutex> lock(rear_tof_lock_);
+    if (msg->header.frame_id == "left_head_tof") {
+      head_tof_.at(msg->header.frame_id) = true;
+      head_tof_payload->left_head = *msg;
+      head_tof_payload->left_head.header.frame_id = "left_head";
+      head_tof_payload->left_head.tof_position = protocol::msg::SingleTofPayload::LEFT_HEAD;
+    } else {
+      head_tof_.at(msg->header.frame_id) = true;
+      head_tof_payload->right_head = *msg;
+      head_tof_payload->right_head.header.frame_id = "right_head";
+      head_tof_payload->right_head.tof_position = protocol::msg::SingleTofPayload::RIGHT_HEAD;
+    }
+    if (head_tof_.at("left_head_tof") && head_tof_.at("right_head_tof")) {
+      head_tof_publisher_->publish(*head_tof_payload);
+      head_tof_.at("left_head_tof") = false;
+      head_tof_.at("right_head_tof") = false;
+    }
+  }
 }
-
-void cyberdog::sensor::SensorManager::rear_tof_payload_callback(
-  std::shared_ptr<protocol::msg::RearTofPayload> msg)
-{
-  rear_tof_publisher_->publish(*msg);
-}
-
 void cyberdog::sensor::SensorManager::sensor_operation(
   const protocol::srv::SensorOperation::Request::SharedPtr request,
   protocol::srv::SensorOperation::Response::SharedPtr response)

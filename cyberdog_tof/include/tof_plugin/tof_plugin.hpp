@@ -18,9 +18,12 @@
 #include <memory>
 #include <string>
 #include <map>
+#include <mutex>
+#include <chrono>
 #include "tof_base/tof_base.hpp"
 #include "embed_protocol/embed_protocol.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
+#include "cyberdog_common/cyberdog_semaphore.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #define EVM cyberdog::embed
@@ -29,15 +32,28 @@ namespace cyberdog
 {
 namespace sensor
 {
-typedef struct _tof_can
+typedef struct
 {
-  uint8_t data_array[64];
-  uint64_t data_clock;
-  uint8_t intensity_array[64];
+  union {
+    uint8_t data[136];
+    struct
+    {
+      uint8_t data_array[64];
+      uint64_t data_clock;
+      uint8_t intensity_array[64];
+    };
+  };
   uint8_t enable_on_ack;
   uint8_t enable_off_ack;
-} tof_can;
-
+  cyberdog::common::Semaphore enable_on_signal;
+  cyberdog::common::Semaphore enable_off_signal;
+  cyberdog::common::Semaphore data_signal;
+  std::atomic<bool> data_received;
+  std::atomic<bool> waiting_data;
+  uint32_t rx_cnt;
+  uint32_t rx_error_cnt;
+  std::chrono::system_clock::time_point time_start;
+} TofMsg;
 
 class TofCarpo : public cyberdog::sensor::TofBase
 {
@@ -53,50 +69,23 @@ public:
   bool LowPower() override;
 
 private:
+  bool simulator_;
+  std::thread simulator_thread_;
+  void SimulationThread();                                            // 更新模拟数据
   std::map<SwitchState, std::string> state_msg_;                      // 状态消息
-  bool SingleOpen(uint8_t serial_number);
-  bool SingleStop(uint8_t serial_number);
-  bool SingleStart(uint8_t serial_number);
-  void left_head_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
-  void right_head_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
-  void left_rear_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
-  void right_rear_callback(std::string & name, std::shared_ptr<cyberdog::sensor::tof_can> data);
 
 private:
-  std::shared_ptr<protocol::msg::HeadTofPayload> head_tof_payload;
-  std::shared_ptr<protocol::msg::RearTofPayload> rear_tof_payload;
-  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_left_head;
-  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_right_head;
-  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_left_rear;
-  std::shared_ptr<protocol::msg::SingleTofPayload> tof_payload_right_rear;
+  bool IsSingleStarted(const std::string & name);
+  bool IsSingleClosed(const std::string & name);
+  void TofMsgCallback(EVM::DataLabel & label, std::shared_ptr<cyberdog::sensor::TofMsg> data);
+  std::map<std::string, std::shared_ptr<EVM::Protocol<TofMsg>>> tof_map_;
+  std::map<std::string, std::shared_ptr<protocol::msg::SingleTofPayload>> tof_data_map_;
 
-
-  std::thread tof_pub_thread_simulator;
-  void UpdateSimulationData();                                      // 更新模拟数据
-
-
-  bool opened_;
-  bool started_;
-  bool closed_;
-  bool stopped_;
-  const int TOFOFFSET = 50;
-
-
-  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_left_head;
-  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_right_head;
-  bool tof_opened_left_head = false;
-  bool tof_started_left_head = false;
-  bool tof_opened_right_head = false;
-  bool tof_started_right_head = false;
-
-  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_left_rear;
-  std::shared_ptr<EVM::Protocol<tof_can>> tof_can_right_rear;
-
-  bool tof_opened_left_rear = false;
-  bool tof_started_left_rear = false;
-  bool tof_opened_right_rear = false;
-  bool tof_started_right_rear = false;
-
+  std::atomic<bool> is_working_;
+  std::atomic<bool> opened_;
+  std::atomic<bool> started_;
+  std::atomic<bool> closed_;
+  std::atomic<bool> stopped_;
   LOGGER_MINOR_INSTANCE("cyberdog_tof");
 };  // class TofCarpo
 }  // namespace sensor
