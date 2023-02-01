@@ -100,6 +100,7 @@ private:
   std::shared_ptr<cyberdog::sensor::UltrasonicBase> ultrasonic_;
   rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr ultrasonic_publisher_;
   void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
+  std::mutex ultrasonic_lock_;
 
   std::shared_ptr<cyberdog::sensor::TofBase> tof_;
   rclcpp::Publisher<protocol::msg::HeadTofPayload>::SharedPtr head_tof_publisher_;
