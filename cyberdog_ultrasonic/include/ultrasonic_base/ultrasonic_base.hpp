@@ -36,15 +36,15 @@ public:
   virtual bool SelfCheck() = 0;
   virtual bool LowPower() = 0;
   virtual ~UltrasonicBase() {}
-  void SetPayloadCallback(
+  void SetSinglePayloadCallback(
     std::function<void(
       std::shared_ptr<sensor_msgs::msg::Range> payload)> cb)
   {
-    payload_callback_ = cb;
+    single_payload_callback_ = cb;
   }
 
 protected:
-  std::function<void(std::shared_ptr<sensor_msgs::msg::Range> payload)> payload_callback_;
+  std::function<void(std::shared_ptr<sensor_msgs::msg::Range> payload)> single_payload_callback_;
   // protocol::msg::UltrasonicPayload
   UltrasonicBase() {}
 };  // class UltrasonicBase

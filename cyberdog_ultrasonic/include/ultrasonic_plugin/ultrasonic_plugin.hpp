@@ -22,6 +22,7 @@
 #include "ultrasonic_base/ultrasonic_base.hpp"
 #include "embed_protocol/embed_protocol.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
+#include "cyberdog_common/cyberdog_semaphore.hpp"
 
 
 #define EVM cyberdog::embed
@@ -30,14 +31,26 @@ namespace cyberdog
 {
 namespace sensor
 {
-typedef struct _ultrasonic_can
+typedef struct
 {
-  uint16_t ultrasonic_data;
-  uint16_t ultrasonic_data_intensity;
-  uint32_t ultrasonic_data_clock;
+  union {
+    uint8_t data[8];
+    struct
+    {
+      uint16_t ultrasonic_data;
+      uint16_t ultrasonic_data_intensity;
+      uint32_t ultrasonic_data_clock;
+    };
+  };
   uint8_t enable_on_ack;
   uint8_t enable_off_ack;
-} ultrasonic_can;
+  cyberdog::common::Semaphore enable_on_signal;
+  cyberdog::common::Semaphore enable_off_signal;
+  cyberdog::common::Semaphore data_signal;
+  std::atomic<bool> data_received;
+  std::atomic<bool> waiting_data;
+  std::chrono::system_clock::time_point time_start;
+} UltrasonicMsg;
 
 class UltrasonicCarpo : public cyberdog::sensor::UltrasonicBase
 {
@@ -53,17 +66,21 @@ public:
   bool LowPower() override;
 
 private:
-  void recv_callback(std::string & name, std::shared_ptr<ultrasonic_can> data);
+  bool simulator_;
+  std::thread simulator_thread_;
+  void SimulationThread();                                            // 更新模拟数据
+  std::map<SwitchState, std::string> state_msg_;                      // 状态消息
 
 private:
-  std::map<SwitchState, std::string> state_msg_;                      // 状态消息
-  std::shared_ptr<EVM::Protocol<ultrasonic_can>> ultrasonic_can_;
-  std::shared_ptr<ultrasonic_can> ultrasonic_data_;
-  std::shared_ptr<sensor_msgs::msg::Range> ultrasonic_payload;
-  bool opened_ = false;
-  bool started_ = false;
-  std::thread ultrasonic_pub_thread_simulator;
-  void UpdateSimulationData();                                        // 更新模拟数据
+  bool IsSingleStarted(const std::string & name);
+  bool IsSingleClosed(const std::string & name);
+  void UltrasonicMsgCallback(EVM::DataLabel & label, std::shared_ptr<UltrasonicMsg> data);
+  std::map<std::string, std::shared_ptr<EVM::Protocol<UltrasonicMsg>>> ultrasonic_map_;
+  std::map<std::string, std::shared_ptr<sensor_msgs::msg::Range>> ultrasonic_data_map_;
+
+  std::atomic<bool> is_working_;
+  std::atomic<bool> opened_ = false;
+  std::atomic<bool> started_ = false;
   LOGGER_MINOR_INSTANCE("cyberdog_ultrasonic");
 };  // class UltrasonicCarpo
 }  // namespace sensor

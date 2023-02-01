@@ -78,7 +78,7 @@ void cyberdog::sensor::SensorManager::Config()
     std::make_shared<pluginlib::ClassLoader<cyberdog::sensor::UltrasonicBase>>(
     "cyberdog_ultrasonic", "cyberdog::sensor::UltrasonicBase");
   ultrasonic_ = ultrasonic_classloader->createSharedInstance("cyberdog::sensor::UltrasonicCarpo");
-  ultrasonic_->SetPayloadCallback(
+  ultrasonic_->SetSinglePayloadCallback(
     std::bind(
       &SensorManager::ultrasonic_payload_callback, this,
       std::placeholders::_1));
@@ -446,6 +446,7 @@ void cyberdog::sensor::SensorManager::lidar_payload_callback(
 void cyberdog::sensor::SensorManager::ultrasonic_payload_callback(
   std::shared_ptr<sensor_msgs::msg::Range> msg)
 {
+  std::unique_lock<std::mutex> lock(ultrasonic_lock_);
   ultrasonic_publisher_->publish(*msg);
 }
 
