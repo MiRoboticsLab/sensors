@@ -356,9 +356,9 @@ void cyberdog::sensor::TofCarpo::TofMsgCallback(
               label.group_name.c_str(), tof_map_.at(
                 label.group_name)->GetData()->rx_error_cnt, tof_map_.at(
                 label.group_name)->GetData()->rx_cnt, kMsgCheckInterval);
-            tof_map_.at(label.group_name)->GetData()->rx_cnt = 0;
             tof_map_.at(label.group_name)->GetData()->rx_error_cnt = 0;
           }
+          tof_map_.at(label.group_name)->GetData()->rx_cnt = 0;
         }
 
         tof_data_map_.at(label.group_name)->header.frame_id = label.group_name;
