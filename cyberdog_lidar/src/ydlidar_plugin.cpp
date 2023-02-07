@@ -19,12 +19,14 @@
 #include "rclcpp/rclcpp.hpp"
 #include "lidar_plugin/ydlidar_plugin.hpp"
 
-bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
+int32_t cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
 {
   this->state_msg_.insert({SwitchState::open, "Open"});
   this->state_msg_.insert({SwitchState::start, "Start"});
   this->state_msg_.insert({SwitchState::stop, "Stop"});
   this->state_msg_.insert({SwitchState::close, "Close"});
+  const SYS::ModuleCode kModuleCode = SYS::ModuleCode::kLidar;
+  code_ = std::make_shared<SYS::CyberdogCode<YdlidarCode>>(kModuleCode);
 
   std::string lidar_config_dir = ament_index_cpp::get_package_share_directory("params") +
     "/toml_config/sensors/lidar.toml";
@@ -32,24 +34,24 @@ bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
 
   if (access(lidar_config_dir.c_str(), F_OK)) {
     ERROR("Params config file does not exist");
-    return false;
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
 
   if (access(lidar_config_dir.c_str(), R_OK)) {
     ERROR("Params config file does not have read permissions");
-    return false;
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
 
   if (access(lidar_config_dir.c_str(), W_OK)) {
     ERROR("Params config file does not have write permissions");
-    return false;
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
 
   if (!cyberdog::common::CyberdogToml::ParseFile(
       lidar_config_dir.c_str(), this->params_toml_))
   {
     ERROR("Params config file is not in toml format");
-    return false;
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
   this->filter_ = toml::find_or(
     this->params_toml_, "dylidar", "filter", false);
@@ -85,17 +87,17 @@ bool cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
 
         this->sensor_state_ = now_state;
         INFO("ydlidar %s ok", this->state_msg_[now_state].c_str());
-        return true;
+        return code_->GetKeyCode(SYS::KeyCode::kOK);
       };
     this->Open = std::bind(Simulator, SwitchState::open);
     this->Start = std::bind(Simulator, SwitchState::start);
     this->Stop = std::bind(Simulator, SwitchState::stop);
     this->Close = std::bind(Simulator, SwitchState::close);
   }
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
-bool cyberdog::sensor::YdlidarCarpo::Open_()
+int32_t cyberdog::sensor::YdlidarCarpo::Open_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::open].c_str());
   this->lidar_ptr_ = std::make_shared<CYdLidar>();
@@ -195,15 +197,15 @@ bool cyberdog::sensor::YdlidarCarpo::Open_()
       "Ydlidar %s failed:%s",
       this->state_msg_[SwitchState::open].c_str(), this->lidar_ptr_->DescribeError());
     this->Close_();
-    return false;
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
 
   this->sensor_state_ = SwitchState::open;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
-bool cyberdog::sensor::YdlidarCarpo::Start_()
+int32_t cyberdog::sensor::YdlidarCarpo::Start_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::start].c_str());
 
@@ -211,13 +213,13 @@ bool cyberdog::sensor::YdlidarCarpo::Start_()
     ERROR(
       "Ydlidar is %s, try open failed, unable to start",
       this->state_msg_[this->sensor_state_].c_str());
-    return false;
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
 
   if (!this->lidar_ptr_->turnOn()) {
     ERROR("Ydlidar turnOn failed:%s", this->lidar_ptr_->DescribeError());
     this->Close_();
-    return false;
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
 
   if (this->update_data_thread_ptr_ == nullptr) {
@@ -228,10 +230,10 @@ bool cyberdog::sensor::YdlidarCarpo::Start_()
 
   this->sensor_state_ = SwitchState::start;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
-bool cyberdog::sensor::YdlidarCarpo::Stop_()
+int32_t cyberdog::sensor::YdlidarCarpo::Stop_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::stop].c_str());
 
@@ -239,10 +241,10 @@ bool cyberdog::sensor::YdlidarCarpo::Stop_()
 
   this->sensor_state_ = SwitchState::stop;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
-bool cyberdog::sensor::YdlidarCarpo::Close_()
+int32_t cyberdog::sensor::YdlidarCarpo::Close_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::close].c_str());
   if (this->lidar_ptr_ != nullptr) {
@@ -251,7 +253,7 @@ bool cyberdog::sensor::YdlidarCarpo::Close_()
   }
   this->sensor_state_ = SwitchState::close;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 void cyberdog::sensor::YdlidarCarpo::UpdateData()
@@ -319,7 +321,7 @@ void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
   }
 }
 
-bool cyberdog::sensor::YdlidarCarpo::SelfCheck()
+int32_t cyberdog::sensor::YdlidarCarpo::SelfCheck()
 {
   bool ret = false;
   switch (this->sensor_state_) {
@@ -339,12 +341,29 @@ bool cyberdog::sensor::YdlidarCarpo::SelfCheck()
       ret = false;
       break;
   }
-  return ret;
+  if (ret) {
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  } else {
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
 }
 
-bool cyberdog::sensor::YdlidarCarpo::LowPower()
+int32_t cyberdog::sensor::YdlidarCarpo::LowPowerOn()
 {
-  return true;
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Stop() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  return return_code;
+}
+
+int32_t cyberdog::sensor::YdlidarCarpo::LowPowerOff()
+{
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Start() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  return return_code;
 }
 
 #include "pluginlib/class_list_macros.hpp"

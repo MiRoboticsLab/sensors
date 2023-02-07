@@ -20,13 +20,14 @@
 #include "cyberdog_common/cyberdog_log.hpp"
 
 
-bool cyberdog::sensor::GpsCarpo::Init(bool simulator)
+int32_t cyberdog::sensor::GpsCarpo::Init(bool simulator)
 {
   this->state_msg_.insert({SwitchState::open, "Open"});
   this->state_msg_.insert({SwitchState::start, "Start"});
   this->state_msg_.insert({SwitchState::stop, "Stop"});
   this->state_msg_.insert({SwitchState::close, "Close"});
-
+  const SYS::ModuleCode kModuleCode = SYS::ModuleCode::kGPS;
+  code_ = std::make_shared<SYS::CyberdogCode<GpsCode>>(kModuleCode);
   if (!simulator) {
     this->Open = std::bind(&cyberdog::sensor::GpsCarpo::Open_, this);
     this->Start = std::bind(&cyberdog::sensor::GpsCarpo::Start_, this);
@@ -56,22 +57,22 @@ bool cyberdog::sensor::GpsCarpo::Init(bool simulator)
         }
 
         INFO("gps %s ok", this->state_msg_[now_state].c_str());
-        return true;
+        return code_->GetKeyCode(SYS::KeyCode::kOK);
       };
     this->Open = std::bind(Simulator, SwitchState::open);
     this->Start = std::bind(Simulator, SwitchState::start);
     this->Stop = std::bind(Simulator, SwitchState::stop);
     this->Close = std::bind(Simulator, SwitchState::close);
   }
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 
-bool cyberdog::sensor::GpsCarpo::Open_()
+int32_t cyberdog::sensor::GpsCarpo::Open_()
 {
   if (is_open == true) {
     INFO("[cyberdog_gps] gps open successfully");
-    return is_open;
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
   }
   bcmgps_ = std::make_shared<bcm_gps::GPS>();
   bcmgps_->SetCallback(
@@ -84,10 +85,14 @@ bool cyberdog::sensor::GpsCarpo::Open_()
   } else {
     INFO("[cyberdog_gps] gps open failed");
   }
-  return is_open;
+  if (is_open) {
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  } else {
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
 }
 
-bool cyberdog::sensor::GpsCarpo::Start_()
+int32_t cyberdog::sensor::GpsCarpo::Start_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Start();}
   is_start = bcmgps_->IsStarted();
@@ -96,11 +101,14 @@ bool cyberdog::sensor::GpsCarpo::Start_()
   } else {
     INFO("[cyberdog_gps] gps start failed");
   }
-
-  return is_start;
+  if (is_start) {
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  } else {
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
 }
 
-bool cyberdog::sensor::GpsCarpo::Stop_()
+int32_t cyberdog::sensor::GpsCarpo::Stop_()
 {
   if (bcmgps_ != nullptr) {bcmgps_->Stop();}
   is_stop = !(bcmgps_->IsStarted());
@@ -109,14 +117,22 @@ bool cyberdog::sensor::GpsCarpo::Stop_()
   } else {
     INFO("[cyberdog_gps] gps stop failed");
   }
-  return is_stop;
+  if (is_stop) {
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  } else {
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
 }
 
-bool cyberdog::sensor::GpsCarpo::Close_()
+int32_t cyberdog::sensor::GpsCarpo::Close_()
 {
   Stop_();
   INFO("[cyberdog_gps] gps close successfully");
-  return is_stop;
+  if (is_stop) {
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  } else {
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
   /*
   if (bcmgps_ != nullptr) {bcmgps_->Close();}
   bool is_close = !(bcmgps_->IsOpened());
@@ -129,14 +145,22 @@ bool cyberdog::sensor::GpsCarpo::Close_()
   */
 }
 
-bool cyberdog::sensor::GpsCarpo::SelfCheck()
+int32_t cyberdog::sensor::GpsCarpo::SelfCheck()
 {
-  return is_start;
+  if (is_start) {
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  } else {
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
 }
 
-bool cyberdog::sensor::GpsCarpo::LowPower()
+int32_t cyberdog::sensor::GpsCarpo::LowPowerOn()
 {
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
+}
+int32_t cyberdog::sensor::GpsCarpo::LowPowerOff()
+{
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 void cyberdog::sensor::GpsCarpo::BCMGPS_Payload_callback(

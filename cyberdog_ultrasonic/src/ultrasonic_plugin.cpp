@@ -24,48 +24,52 @@
 #include "rclcpp/rclcpp.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
-#include "cyberdog_common/cyberdog_toml.hpp"
 
 const char * kDefaultPath = "/toml_config/sensors/";
 const char * kConfigFile = "/toml_config/sensors/ultrasonic_config.toml";
-bool cyberdog::sensor::UltrasonicCarpo::Init(bool simulator)
+
+int32_t cyberdog::sensor::UltrasonicCarpo::Init(bool simulator)
 {
   simulator_ = simulator;
-  this->state_msg_.insert({SwitchState::open, "Open"});
-  this->state_msg_.insert({SwitchState::start, "Start"});
-  this->state_msg_.insert({SwitchState::stop, "Stop"});
-  this->state_msg_.insert({SwitchState::close, "Close"});
+  const SYS::ModuleCode kModuleCode = SYS::ModuleCode::kUltrasonic;
+  code_ = std::make_shared<SYS::CyberdogCode<UltrasonicCode>>(kModuleCode);
   this->Open = std::bind(&cyberdog::sensor::UltrasonicCarpo::Open_, this);
   this->Start = std::bind(&cyberdog::sensor::UltrasonicCarpo::Start_, this);
   this->Stop = std::bind(&cyberdog::sensor::UltrasonicCarpo::Stop_, this);
   this->Close = std::bind(&cyberdog::sensor::UltrasonicCarpo::Close_, this);
 
   auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
-  auto config_file = local_share_dir + kConfigFile;
-  toml::value config;
-  if (!common::CyberdogToml::ParseFile(config_file, config)) {
-    ERROR("Init failed, toml file[%s] is invalid!", config_file.c_str());
-    return false;
-  }
-
-  toml::value ultrasonic_config;
   std::vector<std::string> ultrasonic_cfg_files;
 
-  if (!common::CyberdogToml::Get(config, "ultrasonic_config", ultrasonic_config)) {
-    ERROR("Init failed, toml file[%s] get param [ultrasonic_config] failed!", config_file.c_str());
-    return false;
-  } else {
-    if (!common::CyberdogToml::Get(ultrasonic_config, "config_files", ultrasonic_cfg_files)) {
-      ERROR("Init failed, toml file[%s] get param [config_files] failed!", config_file.c_str());
-      return false;
-    }
-  }
+  auto GetCfgFile = [&]() {
+      toml::value ultrasonic_config;
+      auto config_file = local_share_dir + kConfigFile;
+      toml::value config;
+      if (!TomlParse::ParseFile(config_file, config)) {
+        ERROR("toml file[%s] is invalid!", config_file.c_str());
+        return false;
+      }
+      if (!TomlParse::Get(config, "ultrasonic_config", ultrasonic_config)) {
+        ERROR("toml file[%s] get param [ultrasonic_config] failed!", config_file.c_str());
+        return false;
+      } else {
+        if (!TomlParse::Get(ultrasonic_config, "config_files", ultrasonic_cfg_files)) {
+          ERROR("toml file[%s] get param [config_files] failed!", config_file.c_str());
+          return false;
+        }
+      }
+      return true;
+    };
 
   if (!simulator) {
+    if (!GetCfgFile()) {
+      ERROR("Init failed!");
+      return code_->GetKeyCode(SYS::KeyCode::kFailed);
+    }
     for (auto & file : ultrasonic_cfg_files) {
       auto path = local_share_dir + kDefaultPath + file;
-      std::shared_ptr<EVM::Protocol<UltrasonicMsg>> ultrasonic_msg =
-        std::make_shared<EVM::Protocol<UltrasonicMsg>>(
+      std::shared_ptr<EP::Protocol<UltrasonicMsg>> ultrasonic_msg =
+        std::make_shared<EP::Protocol<UltrasonicMsg>>(
         path, false);
       std::shared_ptr<sensor_msgs::msg::Range> ultrasonic_data =
         std::make_shared<sensor_msgs::msg::Range>();
@@ -92,11 +96,11 @@ bool cyberdog::sensor::UltrasonicCarpo::Init(bool simulator)
 
         if (!common::CyberdogToml::ParseFile(path, single_config)) {
           ERROR("Init failed, toml file[%s] is invalid!", path.c_str());
-          return false;
+          return code_->GetKeyCode(SYS::KeyCode::kFailed);
         }
         if (!common::CyberdogToml::Get(single_config, "name", name)) {
           ERROR("Init failed, toml file[%s] get param [name] failed!", path.c_str());
-          return false;
+          return code_->GetKeyCode(SYS::KeyCode::kFailed);
         }
 
         ultrasonic_map_.insert(std::make_pair(name, nullptr));
@@ -106,17 +110,16 @@ bool cyberdog::sensor::UltrasonicCarpo::Init(bool simulator)
       std::thread(std::bind(&cyberdog::sensor::UltrasonicCarpo::SimulationThread, this));
     simulator_thread_.detach();
   }
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::Open_()
+int32_t cyberdog::sensor::UltrasonicCarpo::Open_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
 
   if (!simulator_) {
     for (auto & ultrasonic : ultrasonic_map_) {
-      ultrasonic.second->GetData()->time_start = std::chrono::system_clock::now();
-
       if (ultrasonic.second->GetData()->data_received) {
         INFO("[%s] opened successfully", ultrasonic.first.c_str());
         continue;
@@ -152,11 +155,13 @@ bool cyberdog::sensor::UltrasonicCarpo::Open_()
       if (!single_status_ok) {status_ok = false;}
     }
   }
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::Start_()
+int32_t cyberdog::sensor::UltrasonicCarpo::Start_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
   if (!simulator_) {
     for (auto & ultrasonic : ultrasonic_map_) {
@@ -173,11 +178,13 @@ bool cyberdog::sensor::UltrasonicCarpo::Start_()
     }
   }
   is_working_ = status_ok;
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::Stop_()
+int32_t cyberdog::sensor::UltrasonicCarpo::Stop_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
   if (!simulator_) {
     for (auto & ultrasonic : ultrasonic_map_) {
@@ -212,11 +219,13 @@ bool cyberdog::sensor::UltrasonicCarpo::Stop_()
     }
   }
   is_working_ = (status_ok ? false : true);
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::Close_()
+int32_t cyberdog::sensor::UltrasonicCarpo::Close_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
   if (!simulator_) {
     for (auto & ultrasonic : ultrasonic_map_) {
@@ -229,18 +238,37 @@ bool cyberdog::sensor::UltrasonicCarpo::Close_()
     }
   }
   is_working_ = (status_ok ? false : true);
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::SelfCheck()
+int32_t cyberdog::sensor::UltrasonicCarpo::SelfCheck()
 {
-  return is_working_;
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Start() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kSelfCheckFailed);
+  }
+  return return_code;
 }
 
-bool cyberdog::sensor::UltrasonicCarpo::LowPower()
+int32_t cyberdog::sensor::UltrasonicCarpo::LowPowerOn()
 {
-  return true;
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Stop() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  return return_code;
 }
+
+int32_t cyberdog::sensor::UltrasonicCarpo::LowPowerOff()
+{
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Start() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  return return_code;
+}
+
 bool cyberdog::sensor::UltrasonicCarpo::IsSingleStarted(const std::string & name)
 {
   if (ultrasonic_map_.find(name) == ultrasonic_map_.end()) {
@@ -267,8 +295,8 @@ bool cyberdog::sensor::UltrasonicCarpo::IsSingleClosed(const std::string & name)
 }
 
 void cyberdog::sensor::UltrasonicCarpo::UltrasonicMsgCallback(
-  EVM::DataLabel & label,
-  std::shared_ptr<cyberdog::sensor::UltrasonicMsg> data)
+  EP::DataLabel & label,
+  std::shared_ptr<UltrasonicMsg> data)
 {
   if (ultrasonic_map_.find(label.group_name) != ultrasonic_map_.end()) {
     if (label.name == "enable_on_ack") {
@@ -313,28 +341,29 @@ void cyberdog::sensor::UltrasonicCarpo::UltrasonicMsgCallback(
 
 void cyberdog::sensor::UltrasonicCarpo::SimulationThread()
 {
-  while (is_working_) {
+  while (1) {
     if (!rclcpp::ok()) {
       WARN("[cyberdog_ultrasonic]: !rclcpp::ok()");
       break;
     }
+    if (is_working_) {
+      std::this_thread::sleep_for(std::chrono::microseconds(200000));
+      auto ultrasonic_payload = std::make_shared<sensor_msgs::msg::Range>();
+      struct timespec time_stu;
+      clock_gettime(CLOCK_REALTIME, &time_stu);
+      ultrasonic_payload->header.stamp.nanosec = time_stu.tv_nsec;
+      ultrasonic_payload->header.stamp.sec = time_stu.tv_sec;
+      ultrasonic_payload->radiation_type = sensor_msgs::msg::Range::ULTRASOUND;
+      ultrasonic_payload->min_range = 0.1f;
+      ultrasonic_payload->max_range = 1.0f;
+      ultrasonic_payload->field_of_view = 15.0f;
+      ultrasonic_payload->range = 0.001f;
 
-    std::this_thread::sleep_for(std::chrono::microseconds(200000));
-    auto ultrasonic_payload = std::make_shared<sensor_msgs::msg::Range>();
-    struct timespec time_stu;
-    clock_gettime(CLOCK_REALTIME, &time_stu);
-    ultrasonic_payload->header.stamp.nanosec = time_stu.tv_nsec;
-    ultrasonic_payload->header.stamp.sec = time_stu.tv_sec;
-    ultrasonic_payload->radiation_type = sensor_msgs::msg::Range::ULTRASOUND;
-    ultrasonic_payload->min_range = 0.1f;
-    ultrasonic_payload->max_range = 1.0f;
-    ultrasonic_payload->field_of_view = 15.0f;
-    ultrasonic_payload->range = 0.001f;
-
-    for (auto & ultrasonic : ultrasonic_map_) {
-      ultrasonic_payload->header.frame_id = ultrasonic.first;
-      if (single_payload_callback_ != nullptr) {
-        single_payload_callback_(ultrasonic_payload);
+      for (auto & ultrasonic : ultrasonic_map_) {
+        ultrasonic_payload->header.frame_id = ultrasonic.first;
+        if (single_payload_callback_ != nullptr) {
+          single_payload_callback_(ultrasonic_payload);
+        }
       }
     }
   }
