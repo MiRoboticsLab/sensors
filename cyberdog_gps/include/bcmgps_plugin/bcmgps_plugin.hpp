@@ -21,29 +21,39 @@
 #include "bcm_gps/bcm_gps.hpp"
 #include "bcmgps_base/bcmgps_base.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
+#include "cyberdog_system/robot_code.hpp"
 
 namespace cyberdog
 {
 namespace sensor
 {
+namespace SYS = cyberdog::system;
 
 class GpsCarpo : public cyberdog::sensor::GpsBase
 {
   using SwitchState = enum {open = 0, start, stop, close, };          // [类型]切换状态
 
 public:
-  bool Init(bool simulator = false) override;
-  bool Open_() override;
-  bool Start_() override;
-  bool Stop_() override;
-  bool Close_() override;
-  bool SelfCheck() override;
-  bool LowPower() override;
+  int32_t Init(bool simulator = false) override;
+  int32_t Open_() override;
+  int32_t Start_() override;
+  int32_t Stop_() override;
+  int32_t Close_() override;
+  int32_t SelfCheck() override;
+  int32_t LowPowerOn() override;
+  int32_t LowPowerOff() override;
+
+public:
+  enum class GpsCode : int32_t
+  {
+    kDemoError1 = 21
+  };
 
 private:
   bool is_open = false;
   bool is_start = false;
   bool is_stop = false;
+  std::shared_ptr<SYS::CyberdogCode<GpsCode>> code_{nullptr};
   std::map<SwitchState, std::string> state_msg_;                      // 状态消息
   std::thread gps_pub_thread_simulator;
   void UpdateSimulationData();                                        // 更新模拟数据

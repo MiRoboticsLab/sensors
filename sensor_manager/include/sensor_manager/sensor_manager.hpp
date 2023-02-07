@@ -42,6 +42,8 @@ namespace cyberdog
 {
 namespace sensor
 {
+namespace SYS = cyberdog::system;
+
 enum class SensorErrorCode : int32_t
 {
   kDemoError1 = 21,
@@ -84,25 +86,25 @@ private:
   std::vector<std::string> simulator_;
   rclcpp::Node::SharedPtr node_ptr_ {nullptr};
   std::unique_ptr<cyberdog::machine::HeartBeatsActuator> heart_beats_ptr_ {nullptr};
-  std::shared_ptr<cyberdog::system::CyberdogCode<SensorErrorCode>> code_ptr_ {nullptr};
+  std::shared_ptr<SYS::CyberdogCode<SensorErrorCode>> code_ptr_ {nullptr};
   std::unique_ptr<SensorSelfCheck> sensor_self_check_ptr {nullptr};
   rclcpp::executors::MultiThreadedExecutor executor;
 
 private:
-  std::shared_ptr<cyberdog::sensor::GpsBase> gps_;
+  std::shared_ptr<GpsBase> gps_;
   rclcpp::Publisher<protocol::msg::GpsPayload>::SharedPtr gps_publisher_;
   void gps_payload_callback(std::shared_ptr<protocol::msg::GpsPayload> msg);
 
-  std::shared_ptr<cyberdog::sensor::LidarBase> lidar_;
+  std::shared_ptr<LidarBase> lidar_;
   rclcpp::Publisher<ScanMsg>::SharedPtr lidar_publisher_;
   void lidar_payload_callback(std::shared_ptr<ScanMsg> msg);
 
-  std::shared_ptr<cyberdog::sensor::UltrasonicBase> ultrasonic_;
+  std::shared_ptr<UltrasonicBase> ultrasonic_;
   rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr ultrasonic_publisher_;
   void ultrasonic_payload_callback(std::shared_ptr<sensor_msgs::msg::Range> msg);
   std::mutex ultrasonic_lock_;
 
-  std::shared_ptr<cyberdog::sensor::TofBase> tof_;
+  std::shared_ptr<TofBase> tof_;
   rclcpp::Publisher<protocol::msg::HeadTofPayload>::SharedPtr head_tof_publisher_;
   rclcpp::Publisher<protocol::msg::RearTofPayload>::SharedPtr rear_tof_publisher_;
   std::shared_ptr<protocol::msg::HeadTofPayload> head_tof_payload;

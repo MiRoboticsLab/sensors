@@ -28,11 +28,14 @@
 #include <map>
 
 #include "lidar_base/lidar_base.hpp"
+#include "cyberdog_system/robot_code.hpp"
 
 namespace cyberdog
 {
 namespace sensor
 {
+namespace SYS = cyberdog::system;
+
 class YdlidarCarpo : public cyberdog::sensor::LidarBase
 {
   using SwitchState = enum {open = 0, start, stop, close, };          // [类型]切换状态
@@ -40,7 +43,11 @@ class YdlidarCarpo : public cyberdog::sensor::LidarBase
   using Filter = filters::FilterChain<ScanMsg>;                       // 过滤激光数据
 
 public:
-  bool Init(bool simulator = false) override;
+  int32_t Init(bool simulator = false) override;
+  enum class YdlidarCode : int32_t
+  {
+    kDemoError1 = 21
+  };
 
 private:
   toml::value params_toml_;                                           // 参数
@@ -54,14 +61,16 @@ private:
   ScanMsg filter_scan_;                                               // 过滤激光数据
   bool filter_ {false};                                               // 是否过滤激光数据
   std::shared_ptr<Filter> filter_ptr_ {nullptr};                      // 激光过滤器
+  std::shared_ptr<SYS::CyberdogCode<YdlidarCode>> code_{nullptr};
 
 private:
-  bool Open_() override;
-  bool Start_() override;
-  bool Stop_() override;
-  bool Close_() override;
-  bool SelfCheck() override;
-  bool LowPower() override;
+  int32_t Open_() override;
+  int32_t Start_() override;
+  int32_t Stop_() override;
+  int32_t Close_() override;
+  int32_t SelfCheck() override;
+  int32_t LowPowerOn() override;
+  int32_t LowPowerOff() override;
   void UpdateData();                                                  // 更新数据
   void UpdateSimulationData();                                        // 更新模拟数据
 

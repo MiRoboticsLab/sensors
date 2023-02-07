@@ -23,49 +23,54 @@
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
-#include "cyberdog_common/cyberdog_toml.hpp"
+
 
 const int kTofOffset = 50;
 const char * kDefaultPath = "/toml_config/sensors/";
 const char * kConfigFile = "/toml_config/sensors/tof_config.toml";
 const int kMsgCheckInterval = 60000;  // ms
 
-bool cyberdog::sensor::TofCarpo::Init(bool simulator)
+int32_t cyberdog::sensor::TofCarpo::Init(bool simulator)
 {
   simulator_ = simulator;
-  this->state_msg_.insert({SwitchState::open, "Open"});
-  this->state_msg_.insert({SwitchState::start, "Start"});
-  this->state_msg_.insert({SwitchState::stop, "Stop"});
-  this->state_msg_.insert({SwitchState::close, "Close"});
+  const SYS::ModuleCode kModuleCode = SYS::ModuleCode::kToF;
+  code_ = std::make_shared<SYS::CyberdogCode<TofCode>>(kModuleCode);
   this->Open = std::bind(&cyberdog::sensor::TofCarpo::Open_, this);
   this->Start = std::bind(&cyberdog::sensor::TofCarpo::Start_, this);
   this->Stop = std::bind(&cyberdog::sensor::TofCarpo::Stop_, this);
   this->Close = std::bind(&cyberdog::sensor::TofCarpo::Close_, this);
 
-  auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
-  auto config_file = local_share_dir + kConfigFile;
-  toml::value config;
-  if (!common::CyberdogToml::ParseFile(config_file, config)) {
-    ERROR("Init failed, toml file[%s] is invalid!", config_file.c_str());
-    return false;
-  }
-
-  toml::value tof_config;
   std::vector<std::string> tof_cfg_files;
+  auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
 
-  if (!common::CyberdogToml::Get(config, "tof_config", tof_config)) {
-    ERROR("Init failed, toml file[%s] get param [tof_config] failed!", config_file.c_str());
-    return false;
-  } else {
-    if (!common::CyberdogToml::Get(tof_config, "config_files", tof_cfg_files)) {
-      ERROR("Init failed, toml file[%s] get param [config_files] failed!", config_file.c_str());
-      return false;
-    }
-  }
+  auto GetCfgFile = [&]() {
+      toml::value tof_config;
+      auto config_file = local_share_dir + kConfigFile;
+      toml::value config;
+      if (!TomlParse::ParseFile(config_file, config)) {
+        ERROR("toml file[%s] is invalid!", config_file.c_str());
+        return false;
+      }
+      if (!TomlParse::Get(config, "tof_config", tof_config)) {
+        ERROR("toml file[%s] get [tof_config] failed!", config_file.c_str());
+        return false;
+      } else {
+        if (!TomlParse::Get(tof_config, "config_files", tof_cfg_files)) {
+          ERROR("toml file[%s] get [config_files] failed!", config_file.c_str());
+          return false;
+        }
+      }
+      return true;
+    };
+
   if (!simulator_) {
+    if (!GetCfgFile()) {
+      ERROR("Init failed!");
+      return code_->GetKeyCode(SYS::KeyCode::kFailed);
+    }
     for (auto & file : tof_cfg_files) {
       auto path = local_share_dir + kDefaultPath + file;
-      std::shared_ptr<EVM::Protocol<TofMsg>> tof_msg = std::make_shared<EVM::Protocol<TofMsg>>(
+      std::shared_ptr<EP::Protocol<TofMsg>> tof_msg = std::make_shared<EP::Protocol<TofMsg>>(
         path, false);
 
       std::shared_ptr<protocol::msg::SingleTofPayload> tof_data =
@@ -90,13 +95,13 @@ bool cyberdog::sensor::TofCarpo::Init(bool simulator)
         toml::value single_config;
         std::string name;
 
-        if (!common::CyberdogToml::ParseFile(path, single_config)) {
+        if (!TomlParse::ParseFile(path, single_config)) {
           ERROR("Init failed, toml file[%s] is invalid!", path.c_str());
-          return false;
+          return code_->GetKeyCode(SYS::KeyCode::kFailed);
         }
-        if (!common::CyberdogToml::Get(single_config, "name", name)) {
+        if (!TomlParse::Get(single_config, "name", name)) {
           ERROR("Init failed, toml file[%s] get param [name] failed!", path.c_str());
-          return false;
+          return code_->GetKeyCode(SYS::KeyCode::kFailed);
         }
 
         tof_map_.insert(std::make_pair(name, nullptr));
@@ -105,17 +110,18 @@ bool cyberdog::sensor::TofCarpo::Init(bool simulator)
     simulator_thread_ = std::thread(std::bind(&cyberdog::sensor::TofCarpo::SimulationThread, this));
     simulator_thread_.detach();
   }
-  return true;
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 
-bool cyberdog::sensor::TofCarpo::Open_()
+int32_t cyberdog::sensor::TofCarpo::Open_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
 
   if (!simulator_) {
     for (auto & tof : tof_map_) {
-      tof.second->GetData()->time_start = std::chrono::system_clock::now();
+      tof.second->GetData()->time_start = Clock::now();
       tof.second->GetData()->rx_cnt = 0;
       tof.second->GetData()->rx_error_cnt = 0;
       if (tof.second->GetData()->data_received) {
@@ -153,12 +159,13 @@ bool cyberdog::sensor::TofCarpo::Open_()
       if (!single_status_ok) {status_ok = false;}
     }
   }
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-
-bool cyberdog::sensor::TofCarpo::Start_()
+int32_t cyberdog::sensor::TofCarpo::Start_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
   if (!simulator_) {
     for (auto & tof : tof_map_) {
@@ -175,11 +182,13 @@ bool cyberdog::sensor::TofCarpo::Start_()
     }
   }
   is_working_ = status_ok;
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-bool cyberdog::sensor::TofCarpo::Stop_()
+int32_t cyberdog::sensor::TofCarpo::Stop_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
   if (!simulator_) {
     for (auto & tof : tof_map_) {
@@ -214,11 +223,13 @@ bool cyberdog::sensor::TofCarpo::Stop_()
     }
   }
   is_working_ = (status_ok ? false : true);
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-bool cyberdog::sensor::TofCarpo::Close_()
+int32_t cyberdog::sensor::TofCarpo::Close_()
 {
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
   bool status_ok = true;
   if (!simulator_) {
     for (auto & tof : tof_map_) {
@@ -231,48 +242,66 @@ bool cyberdog::sensor::TofCarpo::Close_()
     }
   }
   is_working_ = (status_ok ? false : true);
-  return status_ok;
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
 }
 
-bool cyberdog::sensor::TofCarpo::SelfCheck()
+int32_t cyberdog::sensor::TofCarpo::SelfCheck()
 {
-  return is_working_;
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Start() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kSelfCheckFailed);
+  }
+  return return_code;
 }
 
-bool cyberdog::sensor::TofCarpo::LowPower()
+int32_t cyberdog::sensor::TofCarpo::LowPowerOn()
 {
-  return true;
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Stop() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  return return_code;
 }
-
+int32_t cyberdog::sensor::TofCarpo::LowPowerOff()
+{
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  if (Start() != return_code) {
+    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  return return_code;
+}
 void cyberdog::sensor::TofCarpo::SimulationThread()
 {
-  while (is_working_) {
+  while (1) {
     if (!rclcpp::ok()) {
       WARN("[cyberdog_tof]: !rclcpp::ok()");
       break;
     }
-    INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
-    std::this_thread::sleep_for(std::chrono::microseconds(200000));
-    const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
-    std::vector<float> obj;
-    for (size_t i = 0; i < datanum; i++) {
-      obj.push_back(1.0f * protocol::msg::SingleTofPayload::SCALE_FACTOR);
-    }
-    auto tof_payload = std::make_shared<protocol::msg::SingleTofPayload>();
-    struct timespec time_stu;
-    clock_gettime(CLOCK_REALTIME, &time_stu);
-    tof_payload->header.stamp.nanosec = time_stu.tv_nsec;
-    tof_payload->header.stamp.sec = time_stu.tv_sec;
-    tof_payload->data = obj;
-    tof_payload->data_available = false;
-
-    for (auto & tof : tof_map_) {
-      tof_payload->header.frame_id = tof.first;
-      if (single_payload_callback_ != nullptr) {
-        single_payload_callback_(tof_payload);
+    if (is_working_) {
+      INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
+      std::this_thread::sleep_for(std::chrono::microseconds(200000));
+      const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
+      std::vector<float> obj;
+      for (size_t i = 0; i < datanum; i++) {
+        obj.push_back(1.0f * protocol::msg::SingleTofPayload::SCALE_FACTOR);
       }
+      auto tof_payload = std::make_shared<protocol::msg::SingleTofPayload>();
+      struct timespec time_stu;
+      clock_gettime(CLOCK_REALTIME, &time_stu);
+      tof_payload->header.stamp.nanosec = time_stu.tv_nsec;
+      tof_payload->header.stamp.sec = time_stu.tv_sec;
+      tof_payload->data = obj;
+      tof_payload->data_available = false;
+
+      for (auto & tof : tof_map_) {
+        tof_payload->header.frame_id = tof.first;
+        if (single_payload_callback_ != nullptr) {
+          single_payload_callback_(tof_payload);
+        }
+      }
+      INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
     }
-    INFO("[cyberdog_tof]: publish cyberdog_tof payload succeed");
   }
 }
 bool cyberdog::sensor::TofCarpo::IsSingleStarted(const std::string & name)
@@ -301,8 +330,8 @@ bool cyberdog::sensor::TofCarpo::IsSingleClosed(const std::string & name)
 }
 
 void cyberdog::sensor::TofCarpo::TofMsgCallback(
-  EVM::DataLabel & label,
-  std::shared_ptr<cyberdog::sensor::TofMsg> data)
+  EP::DataLabel & label,
+  std::shared_ptr<TofMsg> data)
 {
   if (tof_map_.find(label.group_name) != tof_map_.end()) {
     if (label.name == "enable_on_ack") {
@@ -344,12 +373,12 @@ void cyberdog::sensor::TofCarpo::TofMsgCallback(
         }
 
         // msg check
-        auto now = std::chrono::system_clock::now();
+        auto now = Clock::now();
         auto duration =
           std::chrono::duration_cast<std::chrono::milliseconds>(
           now - tof_map_.at(label.group_name)->GetData()->time_start);
         if (duration.count() >= kMsgCheckInterval) {
-          tof_map_.at(label.group_name)->GetData()->time_start = std::chrono::system_clock::now();
+          tof_map_.at(label.group_name)->GetData()->time_start = Clock::now();
           if (tof_map_.at(label.group_name)->GetData()->rx_error_cnt > 0) {
             WARN(
               "[%s] get error data:[%d]/[%d] ,interval[%d] !",
