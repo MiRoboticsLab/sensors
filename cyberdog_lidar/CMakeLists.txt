@@ -16,6 +16,7 @@ find_package(bream_vendor REQUIRED)
 find_package(protocol REQUIRED)
 find_package(ydlidar_sdk REQUIRED)
 find_package(filters REQUIRED)
+find_package(cyberdog_system REQUIRED)
 
 link_directories(${YDLIDAR_SDK_LIBRARY_DIRS})
 

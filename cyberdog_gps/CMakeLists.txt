@@ -14,6 +14,7 @@ find_package(rclcpp REQUIRED)
 find_package(cyberdog_common REQUIRED)
 find_package(bream_vendor REQUIRED)
 find_package(protocol REQUIRED)
+find_package(cyberdog_system REQUIRED)
 
 
 
