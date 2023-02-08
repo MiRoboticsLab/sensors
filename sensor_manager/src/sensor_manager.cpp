@@ -322,7 +322,7 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   //   return code_ptr_->GetKeyCode(SYS::KeyCode::kFailed);
   // }
   // INFO("Gps start success.");
-  return_code = this->ultrasonic_->Start();
+  return_code = this->ultrasonic_->LowPowerOff();
   if (!IS_OK(return_code)) {
     ERROR("Ultrasonic start fail.");
     return return_code;
@@ -330,7 +330,7 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
     INFO("Ultrasonic start success.");
   }
 
-  return_code = this->tof_->Start();
+  return_code = this->tof_->LowPowerOff();
   if (!IS_OK(return_code)) {
     ERROR("Tof start fail.");
     return return_code;

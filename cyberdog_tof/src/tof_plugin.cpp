@@ -208,9 +208,18 @@ int32_t cyberdog::sensor::TofCarpo::Stop_()
           single_status_ok = false;
         } else {
           if (tof.second->GetData()->enable_off_ack == 0) {
-            INFO("[%s] stoped successfully", tof.first.c_str());
-            single_status_ok = true;
-            break;
+            // TODO(jyy) check stoped;
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            if (IsSingleClosed(tof.first)) {
+              INFO("[%s] stoped successfully", tof.first.c_str());
+              single_status_ok = true;
+              break;
+            } else {
+              ERROR(
+                "[%s] stoped failed,get ack but data is receving,time[%d]",
+                tof.first.c_str(), retry);
+              single_status_ok = false;
+            }
           } else {
             single_status_ok = false;
             ERROR(
@@ -266,7 +275,7 @@ int32_t cyberdog::sensor::TofCarpo::LowPowerOn()
 int32_t cyberdog::sensor::TofCarpo::LowPowerOff()
 {
   int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
-  if (Start() != return_code) {
+  if (Open() != return_code) {
     return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
   return return_code;
@@ -311,7 +320,7 @@ bool cyberdog::sensor::TofCarpo::IsSingleStarted(const std::string & name)
     return false;
   }
   tof_map_.at(name)->GetData()->waiting_data = true;
-  bool is_started = tof_map_.at(name)->GetData()->data_signal.WaitFor(2000) ? false : true;
+  bool is_started = tof_map_.at(name)->GetData()->data_signal.WaitFor(1000) ? false : true;
   tof_map_.at(name)->GetData()->waiting_data = false;
   return is_started;
 }
@@ -323,7 +332,7 @@ bool cyberdog::sensor::TofCarpo::IsSingleClosed(const std::string & name)
     return false;
   }
   tof_map_.at(name)->GetData()->waiting_data = true;
-  bool is_closed = tof_map_.at(name)->GetData()->data_signal.WaitFor(2000) ? true : false;
+  bool is_closed = tof_map_.at(name)->GetData()->data_signal.WaitFor(200) ? true : false;
   tof_map_.at(name)->GetData()->waiting_data = false;
   tof_map_.at(name)->GetData()->data_received = false;
   return is_closed;
