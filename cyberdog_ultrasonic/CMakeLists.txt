@@ -15,7 +15,7 @@ find_package(cyberdog_common REQUIRED)
 find_package(protocol REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(cyberdog_embed_protocol REQUIRED)
-
+find_package(cyberdog_system REQUIRED)
 
 
 add_library(${PROJECT_NAME} SHARED

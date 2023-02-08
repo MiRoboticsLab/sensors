@@ -13,6 +13,7 @@
   <depend>rclcpp</depend>
   <depend>params</depend>
   <depend>cyberdog_common</depend>
+  <depend>cyberdog_system</depend>
   <depend>ament_index_cpp</depend>
   <depend>protocol</depend>
   <depend>cyberdog_embed_protocol</depend>
