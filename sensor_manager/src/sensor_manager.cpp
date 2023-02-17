@@ -106,12 +106,15 @@ void cyberdog::sensor::SensorManager::Config()
       &SensorManager::SingleTofPayloadCallback, this,
       std::placeholders::_1));
 
+  callback_group_ =
+    node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
 
   sensor_operation_srv_ = node_ptr_->create_service<protocol::srv::SensorOperation>(
     "sensor_operation",
     std::bind(
       &SensorManager::sensor_operation, this, std::placeholders::_1,
-      std::placeholders::_2));
+      std::placeholders::_2),
+    rmw_qos_profile_services_default, callback_group_);
 
   INFO("sensor_manager Configuring,success");
 }

@@ -89,6 +89,7 @@ private:
   std::shared_ptr<SYS::CyberdogCode<SensorErrorCode>> code_ptr_ {nullptr};
   std::unique_ptr<SensorSelfCheck> sensor_self_check_ptr {nullptr};
   rclcpp::executors::MultiThreadedExecutor executor;
+  rclcpp::CallbackGroup::SharedPtr callback_group_{nullptr};
 
 private:
   std::shared_ptr<GpsBase> gps_;
