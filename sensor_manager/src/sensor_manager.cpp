@@ -312,20 +312,27 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   int32_t return_code = code_ptr_->GetKeyCode(SYS::KeyCode::kOK);
 
   INFO("SensorManager Running begin");
-  return_code = this->lidar_->Start();
+  auto lidar_on = [&]() {
+      return this->lidar_->Start();
+    };
+  auto ultrasonic_on = [&]() {
+      return this->ultrasonic_->LowPowerOff();
+    };
+  auto tof_on = [&]() {
+      return this->tof_->LowPowerOff();
+    };
+  std::future<int32_t> lidar_future = std::async(std::launch::async, lidar_on);
+  std::future<int32_t> ultrasonic_future = std::async(std::launch::async, ultrasonic_on);
+  std::future<int32_t> tof_future = std::async(std::launch::async, tof_on);
+
+  return_code = lidar_future.get();
   if (!IS_OK(return_code)) {
     ERROR("Lidar start fail.");
     return return_code;
   } else {
     INFO("Lidar start success.");
   }
-  // GPS TODO
-  // if (!this->gps_->Start()) {
-  //   ERROR("Gps start fail.");
-  //   return code_ptr_->GetKeyCode(SYS::KeyCode::kFailed);
-  // }
-  // INFO("Gps start success.");
-  return_code = this->ultrasonic_->LowPowerOff();
+  return_code = ultrasonic_future.get();
   if (!IS_OK(return_code)) {
     ERROR("Ultrasonic start fail.");
     return return_code;
@@ -333,13 +340,20 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
     INFO("Ultrasonic start success.");
   }
 
-  return_code = this->tof_->LowPowerOff();
+  return_code = tof_future.get();
   if (!IS_OK(return_code)) {
     ERROR("Tof start fail.");
     return return_code;
   } else {
     INFO("Tof start success.");
   }
+
+  // GPS TODO
+  // if (!this->gps_->Start()) {
+  //   ERROR("Gps start fail.");
+  //   return code_ptr_->GetKeyCode(SYS::KeyCode::kFailed);
+  // }
+  // INFO("Gps start success.");
 
   INFO("Sensor manager start success.");
   return code_ptr_->GetKeyCode(SYS::KeyCode::kOK);

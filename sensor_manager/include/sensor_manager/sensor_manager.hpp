@@ -21,6 +21,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <future>
 #include "pluginlib/class_loader.hpp"
 #include "bcmgps_base/bcmgps_base.hpp"
 #include "protocol/msg/gps_payload.hpp"
