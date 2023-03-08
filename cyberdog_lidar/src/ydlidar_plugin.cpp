@@ -100,7 +100,9 @@ int32_t cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
 int32_t cyberdog::sensor::YdlidarCarpo::Open_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::open].c_str());
-  this->lidar_ptr_ = std::make_shared<CYdLidar>();
+  if (this->lidar_ptr_ == nullptr) {
+    this->lidar_ptr_ = std::make_shared<CYdLidar>();
+  }
 
   std::string str_optvalue;
   str_optvalue = toml::find_or(this->params_toml_, "dylidar", "port", "/dev/ydlidar");
@@ -208,12 +210,20 @@ int32_t cyberdog::sensor::YdlidarCarpo::Open_()
 int32_t cyberdog::sensor::YdlidarCarpo::Start_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::start].c_str());
-
-  if ((this->sensor_state_ == SwitchState::close) && (!this->Open_())) {
-    ERROR(
-      "Ydlidar is %s, try open failed, unable to start",
-      this->state_msg_[this->sensor_state_].c_str());
+  if (this->lidar_ptr_ == nullptr) {
+    ERROR("Now Ydlidar is not yet opened.");
     return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  if (this->sensor_state_ == SwitchState::start) {
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  }
+  if (this->sensor_state_ != SwitchState::open) {
+    this->lidar_ptr_->disconnecting();
+    if (!this->Open_()) {
+      ERROR("Now is stop, open Ydlidar failed:%s", this->lidar_ptr_->DescribeError());
+      this->Close_();
+      return code_->GetKeyCode(SYS::KeyCode::kFailed);
+    }
   }
 
   if (!this->lidar_ptr_->turnOn()) {
@@ -236,7 +246,10 @@ int32_t cyberdog::sensor::YdlidarCarpo::Start_()
 int32_t cyberdog::sensor::YdlidarCarpo::Stop_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::stop].c_str());
-
+  if (this->lidar_ptr_ == nullptr) {
+    ERROR("Now Ydlidar is not yet opened.");
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
   this->lidar_ptr_->turnOff();
 
   this->sensor_state_ = SwitchState::stop;
@@ -247,10 +260,12 @@ int32_t cyberdog::sensor::YdlidarCarpo::Stop_()
 int32_t cyberdog::sensor::YdlidarCarpo::Close_()
 {
   INFO("%s ydlidar ...", this->state_msg_[SwitchState::close].c_str());
-  if (this->lidar_ptr_ != nullptr) {
-    this->lidar_ptr_->turnOff();
-    this->lidar_ptr_->disconnecting();
+  if (this->lidar_ptr_ == nullptr) {
+    ERROR("Now Ydlidar is not yet opened.");
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
+  this->lidar_ptr_->turnOff();
+  this->lidar_ptr_->disconnecting();
   this->sensor_state_ = SwitchState::close;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return code_->GetKeyCode(SYS::KeyCode::kOK);
