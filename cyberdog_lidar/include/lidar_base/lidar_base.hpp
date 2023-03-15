@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
+// Copyright (c) 2023-2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,16 @@ namespace cyberdog
 {
 namespace sensor
 {
+/*! \file       lidar_base.hpp
+    \brief      雷达基础模块。
+    \details    创建及初始化雷达基础模块。
+    \author     尚子涵
+    \author     Shang Zihan
+    \version    1.1.0.0
+    \date       2023-02-06
+    \pre        初始化设备。
+    \copyright  [2023]-[2023] [Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.]
+*/
 class LidarBase
 {
 public:
