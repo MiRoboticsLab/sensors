@@ -219,7 +219,7 @@ int32_t cyberdog::sensor::YdlidarCarpo::Start_()
   }
   if (this->sensor_state_ != SwitchState::open) {
     this->lidar_ptr_->disconnecting();
-    if (this->Open_() != SYS::KeyCode::kOK) {
+    if (this->Open_() != static_cast<int32_t>(SYS::KeyCode::kOK)) {
       ERROR("Now is stop, open Ydlidar failed:%s", this->lidar_ptr_->DescribeError());
       this->Close_();
       return code_->GetKeyCode(SYS::KeyCode::kFailed);
