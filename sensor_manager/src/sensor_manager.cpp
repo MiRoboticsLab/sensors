@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
+// Copyright (c) 2023-2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "sensor_manager/sensor_manager.hpp"
 #include "cyberdog_common/cyberdog_log.hpp"
 
-#define IS_OK(code)  ((code & 0xFF) ? false : true)
+#define IS_OK(code) ((code & 0xFF) ? false : true)
 
 cyberdog::sensor::SensorManager::SensorManager(const std::string & name)
 : cyberdog::machine::MachineActuator(name),
@@ -35,7 +35,8 @@ cyberdog::sensor::SensorManager::SensorManager(const std::string & name)
 }
 
 cyberdog::sensor::SensorManager::~SensorManager()
-{}
+{
+}
 
 void cyberdog::sensor::SensorManager::Config()
 {
@@ -312,13 +313,16 @@ int32_t cyberdog::sensor::SensorManager::OnActive()
   int32_t return_code = code_ptr_->GetKeyCode(SYS::KeyCode::kOK);
 
   INFO("SensorManager Running begin");
-  auto lidar_on = [&]() {
+  auto lidar_on = [&]()
+    {
       return this->lidar_->Start();
     };
-  auto ultrasonic_on = [&]() {
+  auto ultrasonic_on = [&]()
+    {
       return this->ultrasonic_->LowPowerOff();
     };
-  auto tof_on = [&]() {
+  auto tof_on = [&]()
+    {
       return this->tof_->LowPowerOff();
     };
   std::future<int32_t> lidar_future = std::async(std::launch::async, lidar_on);
@@ -370,7 +374,8 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   INFO("sensor on setup");
   this->node_ptr_->declare_parameter("simulator", std::vector<std::string>{});
   this->node_ptr_->get_parameter("simulator", this->simulator_);
-  auto is_simulator = [this](std::string sensor_name) -> bool {
+  auto is_simulator = [this](std::string sensor_name) -> bool
+    {
       return static_cast<bool>(std::find(
                this->simulator_.begin(), this->simulator_.end(),
                sensor_name) != this->simulator_.end());
@@ -379,8 +384,9 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   INFO("ultrasonic_ is_simulator %d", is_simulator("ultrasonic"));
   INFO("tof_ is_simulator %d", is_simulator("tof"));
   INFO("lidar_ is_simulator %d", is_simulator("lidar"));
-  auto IsJump = [&](std::string name, std::string step) {
-      if (!sensor_self_check_ptr->IsJump("ultrasonic")) {
+  auto IsJump = [&](std::string name, std::string step)
+    {
+      if (sensor_self_check_ptr->IsJump(name)) {
         INFO("Jump %s at %s error.", name.c_str(), step.c_str());
         return true;
       } else {
@@ -392,40 +398,56 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   if (IS_OK(return_code)) {
     return_code = ultrasonic_->Open();
     if (!IS_OK(return_code)) {
-      if (!IsJump("ultrasonic", "open")) {return return_code;}
+      if (!IsJump("ultrasonic", "open")) {
+        return return_code;
+      }
     }
   } else {
-    if (!IsJump("ultrasonic", "init")) {return return_code;}
+    if (!IsJump("ultrasonic", "init")) {
+      return return_code;
+    }
   }
 
   return_code = tof_->Init(is_simulator("tof"));
   if (IS_OK(return_code)) {
     return_code = tof_->Open();
     if (!IS_OK(return_code)) {
-      if (!IsJump("tof", "open")) {return return_code;}
+      if (!IsJump("tof", "open")) {
+        return return_code;
+      }
     }
   } else {
-    if (!IsJump("tof", "init")) {return return_code;}
+    if (!IsJump("tof", "init")) {
+      return return_code;
+    }
   }
 
   return_code = lidar_->Init(is_simulator("lidar"));
   if (IS_OK(return_code)) {
     return_code = lidar_->Open();
     if (!IS_OK(return_code)) {
-      if (!IsJump("lidar", "open")) {return return_code;}
+      if (!IsJump("lidar", "open")) {
+        return return_code;
+      }
     }
   } else {
-    if (!IsJump("lidar", "init")) {return return_code;}
+    if (!IsJump("lidar", "init")) {
+      return return_code;
+    }
   }
 
   return_code = gps_->Init(is_simulator("gps"));
   if (IS_OK(return_code)) {
     return_code = gps_->Open();
     if (!IS_OK(return_code)) {
-      if (!IsJump("gps", "open")) {return return_code;}
+      if (!IsJump("gps", "open")) {
+        return return_code;
+      }
     }
   } else {
-    if (!IsJump("gps", "init")) {return return_code;}
+    if (!IsJump("gps", "init")) {
+      return return_code;
+    }
   }
 
   INFO("SensorManager Running begin");
@@ -433,7 +455,9 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   return_code = this->lidar_->Start();
   if (!IS_OK(return_code)) {
     ERROR("Lidar start fail.");
-    if (!IsJump("lidar", "start")) {return return_code;}
+    if (!IsJump("lidar", "start")) {
+      return return_code;
+    }
   } else {
     INFO("Lidar start success.");
   }
@@ -441,7 +465,9 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   return_code = this->gps_->Start();
   if (!IS_OK(return_code)) {
     ERROR("Gps start fail.");
-    if (!IsJump("gps", "start")) {return return_code;}
+    if (!IsJump("gps", "start")) {
+      return return_code;
+    }
   } else {
     INFO("Gps start success.");
   }
@@ -449,7 +475,9 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   return_code = this->ultrasonic_->Start();
   if (!IS_OK(return_code)) {
     ERROR("Ultrasonic start fail.");
-    if (!IsJump("ultrasonic", "start")) {return return_code;}
+    if (!IsJump("ultrasonic", "start")) {
+      return return_code;
+    }
   } else {
     INFO("Ultrasonic start success.");
   }
@@ -457,7 +485,9 @@ int32_t cyberdog::sensor::SensorManager::OnSetUp()
   return_code = this->tof_->Start();
   if (!IS_OK(return_code)) {
     ERROR("Tof start fail.");
-    if (!IsJump("tof", "start")) {return return_code;}
+    if (!IsJump("tof", "start")) {
+      return return_code;
+    }
   } else {
     INFO("Tof start success.");
   }
@@ -559,23 +589,28 @@ void cyberdog::sensor::SensorManager::sensor_operation(
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
-          1>(sensor_tuple), request->operation);
+          1>(sensor_tuple),
+          request->operation);
         response->success &=
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
-          1>(sensor_tuple), request->operation);
+          1>(sensor_tuple),
+          request->operation);
         response->success &=
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_TOF -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_TOF -
-          1>(sensor_tuple), request->operation);
+          1>(sensor_tuple),
+          request->operation);
         response->success &=
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_GPS -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_GPS -
-          1>(sensor_tuple), request->operation);
-      } break;
+          1>(sensor_tuple),
+          request->operation);
+      }
+      break;
 
     case protocol::srv::SensorOperation::Request::ID_LIDAR:
       {
@@ -583,8 +618,10 @@ void cyberdog::sensor::SensorManager::sensor_operation(
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_LIDAR -
-          1>(sensor_tuple), request->operation);
-      } break;
+          1>(sensor_tuple),
+          request->operation);
+      }
+      break;
 
     case protocol::srv::SensorOperation::Request::ID_ULTRA:
       {
@@ -592,8 +629,10 @@ void cyberdog::sensor::SensorManager::sensor_operation(
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_ULTRA -
-          1>(sensor_tuple), request->operation);
-      } break;
+          1>(sensor_tuple),
+          request->operation);
+      }
+      break;
 
     case protocol::srv::SensorOperation::Request::ID_TOF:
       {
@@ -601,8 +640,10 @@ void cyberdog::sensor::SensorManager::sensor_operation(
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_TOF -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_TOF -
-          1>(sensor_tuple), request->operation);
-      } break;
+          1>(sensor_tuple),
+          request->operation);
+      }
+      break;
 
     case protocol::srv::SensorOperation::Request::ID_GPS:
       {
@@ -610,12 +651,15 @@ void cyberdog::sensor::SensorManager::sensor_operation(
           SensorOperation<decltype(std::get<protocol::srv::SensorOperation::Request::ID_GPS -
             1>(sensor_tuple))>(
           std::get<protocol::srv::SensorOperation::Request::ID_GPS -
-          1>(sensor_tuple), request->operation);
-      } break;
+          1>(sensor_tuple),
+          request->operation);
+      }
+      break;
 
     default:
       {
         response->success = false;
-      } break;
+      }
+      break;
   }
 }
