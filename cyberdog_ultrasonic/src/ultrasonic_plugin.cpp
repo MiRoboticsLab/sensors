@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
+// Copyright (c) 2023-2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include <unistd.h>
 #include <time.h>
 #include <memory>
@@ -141,9 +142,15 @@ int32_t cyberdog::sensor::UltrasonicCarpo::Open_()
           }
         } else {
           if (ultrasonic.second->GetData()->enable_on_ack == 0) {
-            single_status_ok = true;
-            INFO("[%s] opened successfully", ultrasonic.first.c_str());
-            break;
+            if (IsSingleStarted(ultrasonic.first)) {
+              INFO("[%s] opened successfully", ultrasonic.first.c_str());
+              single_status_ok = true;
+              break;
+            } else {
+              single_status_ok = false;
+              WARN("[%s]opened but no data received!", ultrasonic.first.c_str());
+              Reset(ultrasonic.first);
+            }
           } else {
             single_status_ok = false;
             ERROR(
@@ -250,7 +257,40 @@ int32_t cyberdog::sensor::UltrasonicCarpo::Close_()
   if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
   return return_code;
 }
+int32_t cyberdog::sensor::UltrasonicCarpo::Reset(const std::string & name)
+{
+  if (ultrasonic_map_.find(name) == ultrasonic_map_.end()) {
+    INFO("%s:ultrasonic map not find [%s]", __func__, name.c_str());
+    return false;
+  }
+  INFO("%s[%s]", __func__, name.c_str());
+  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
+  bool status_ok = true;
 
+  if (!simulator_) {
+    int retry = 0;
+    bool single_status_ok = true;
+    while (retry++ < 3) {
+      ultrasonic_map_.at(name)->Operate("enable_off", std::vector<uint8_t>{});
+      if (!ultrasonic_map_.at(name)->GetData()->enable_off_signal.WaitFor(500)) {
+        if (ultrasonic_map_.at(name)->GetData()->enable_off_ack == 0) {
+          single_status_ok = true;
+          std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        } else {
+          single_status_ok = false;
+          ERROR(
+            "[%s] reset failed, get ack 0x%x!",
+            name.c_str(), ultrasonic_map_.at(name)->GetData()->enable_off_ack);
+        }
+      } else {
+        ERROR("[%s] reset failed, no ack![%d]", name.c_str(), retry);
+      }
+    }
+    if (!single_status_ok) {status_ok = false;}
+  }
+  if (!status_ok) {return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);}
+  return return_code;
+}
 int32_t cyberdog::sensor::UltrasonicCarpo::SelfCheck()
 {
   int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
@@ -285,7 +325,7 @@ bool cyberdog::sensor::UltrasonicCarpo::IsSingleStarted(const std::string & name
     return false;
   }
   ultrasonic_map_.at(name)->GetData()->waiting_data = true;
-  bool is_started = ultrasonic_map_.at(name)->GetData()->data_signal.WaitFor(1000) ? false : true;
+  bool is_started = ultrasonic_map_.at(name)->GetData()->data_signal.WaitFor(200) ? false : true;
   ultrasonic_map_.at(name)->GetData()->waiting_data = false;
   return is_started;
 }
@@ -312,15 +352,18 @@ void cyberdog::sensor::UltrasonicCarpo::UltrasonicMsgCallback(
       if (data->enable_on_ack != 0) {
         ERROR("%s,enable_on ack err 0x:%x", label.group_name.c_str(), data->enable_on_ack);
       }
-      ultrasonic_map_.at(label.group_name)->GetData()->enable_on_signal.Give();
+      data->enable_on_signal.Give();
     } else if (label.name == "enable_off_ack") {
       if (data->enable_off_ack != 0) {
         ERROR("%s,enable_off ack err 0x:%x", label.group_name.c_str(), data->enable_off_ack);
       }
-      ultrasonic_map_.at(label.group_name)->GetData()->enable_off_signal.Give();
+      data->enable_off_signal.Give();
     } else if (label.name == "data") {
-      if (!ultrasonic_map_.at(label.group_name)->GetData()->data_received) {
-        ultrasonic_map_.at(label.group_name)->GetData()->data_received = true;
+      if (data->waiting_data) {
+        data->data_signal.Give();
+      }
+      if (!data->data_received) {
+        data->data_received = true;
       }
       struct timespec time_stu;
       clock_gettime(CLOCK_REALTIME, &time_stu);
