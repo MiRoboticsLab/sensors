@@ -42,10 +42,10 @@ int32_t cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
     return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
 
-  if (access(lidar_config_dir.c_str(), W_OK)) {
-    ERROR("Params config file does not have write permissions");
-    return code_->GetKeyCode(SYS::KeyCode::kFailed);
-  }
+  // if (access(lidar_config_dir.c_str(), W_OK)) {
+  //   ERROR("Params config file does not have write permissions");
+  //   return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  // }
 
   if (!cyberdog::common::CyberdogToml::ParseFile(
       lidar_config_dir.c_str(), this->params_toml_))
