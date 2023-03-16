@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
+// Copyright (c) 2023-2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 
 #ifndef ULTRASONIC_PLUGIN__ULTRASONIC_PLUGIN_HPP_
 #define ULTRASONIC_PLUGIN__ULTRASONIC_PLUGIN_HPP_
@@ -85,6 +86,7 @@ private:
   std::atomic<bool> is_working_;
 
 private:
+  int32_t Reset(const std::string & name);
   bool IsSingleStarted(const std::string & name);
   bool IsSingleClosed(const std::string & name);
   void UltrasonicMsgCallback(EP::DataLabel & label, std::shared_ptr<UltrasonicMsg> data);
