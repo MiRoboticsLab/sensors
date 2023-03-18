@@ -18,8 +18,8 @@ limitations under the License.
 * [1. Revise](#1-revise)
 * [2. Overview](#2-overview)
 * [3. Design](#3-design)
-> * [3.1. Feature design](#31-feature-design)
-> * [3.2. modular design](#32-modular-design)
+    * [3.1. Feature design](#31-feature-design)
+    * [3.2. modular design](#32-modular-design)
 ---
 ## 1. Revise
 

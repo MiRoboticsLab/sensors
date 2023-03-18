@@ -18,8 +18,8 @@ limitations under the License.
 * [1. 修订](#1-修订)
 * [2. 概述](#2-概述)
 * [3. 设计](#3-设计)
-> * [3.1. 功能设计](#31-功能设计)
-> * [3.2. 模块设计](#32-模块设计)
+    * [3.1. 功能设计](#31-功能设计)
+    * [3.2. 模块设计](#32-模块设计)
 ---
 ## 1. 修订
 
@@ -97,8 +97,8 @@ limitations under the License.
 * [1. Revise](#1-revise)
 * [2. Overview](#2-overview)
 * [3. Design](#3-design)
-> * [3.1. Feature design](#31-feature-design)
-> * [3.2. modular design](#32-modular-design)
+    * [3.1. Feature design](#31-feature-design)
+    * [3.2. modular design](#32-modular-design)
 ---
 ## 1. Revise
 
