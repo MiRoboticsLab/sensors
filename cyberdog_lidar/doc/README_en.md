@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
-## <font color=Blue size=4> directory </font>
+## <font color=Blue size=4> Directory </font>
 * [1. Revise](#1-revise)
 * [2. Overview](#2-overview)
 * [3. Design](#3-design)
