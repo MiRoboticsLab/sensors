@@ -39,7 +39,7 @@ limitations under the License.
 
 </center>
 
-> 如上图所示，仿生机器人雷达驱动主要用于：需要实时反馈仿生机器人所处环境中的障碍物距离及距离探测值强度信息的场景。
+如上图所示，仿生机器人雷达驱动主要用于：需要实时反馈仿生机器人所处环境中的障碍物距离及距离探测值强度信息的场景。
 
 ## 3. 设计
 ### 3.1. 功能设计
@@ -50,7 +50,7 @@ limitations under the License.
 
 </center>
 
-> 如上图所示，  仿生机器人雷达驱动工作流程主要如下：
+如上图所示，  仿生机器人雷达驱动工作流程主要如下：
 1. 解析雷达配置参数并按照参数配置雷达软硬件；
 2. 初始化雷达；
 3. 如果初始化成功则继续下一步反之退出；
@@ -66,7 +66,7 @@ limitations under the License.
 
 </center>
 
-> 如上图所示，  仿生机器人雷达驱动架构组成及各组成部分主要功能如下：
+如上图所示，  仿生机器人雷达驱动架构组成及各组成部分主要功能如下：
 1. Lidar SDK：提供 Linux 下雷达固件数据采集及解析功能；
 2. Utils：提供常用工具，如日志；
 3. 雷达软硬件配置功能模块：提供雷达硬件及软件的配置功能；
@@ -118,7 +118,7 @@ cyberdog_lidar|V1.1.0.0|V1.0.0.0|2023-02-06|ShangZihan|none
 
 </center>
 
-> As shown in the figure above, the bionic robot radar driver is mainly used in scenarios where real-time feedback of obstacle distance and distance detection value intensity information in the bionic robot's environment is required.
+As shown in the figure above, the bionic robot radar driver is mainly used in scenarios where real-time feedback of obstacle distance and distance detection value intensity information in the bionic robot's environment is required.
 
 ## 3. Design
 ### 3.1. Feature design
@@ -129,7 +129,7 @@ cyberdog_lidar|V1.1.0.0|V1.0.0.0|2023-02-06|ShangZihan|none
 
 </center>
 
-> As shown in the figure above, the workflow of the bionic robot radar driver is mainly as follows:
+As shown in the figure above, the workflow of the bionic robot radar driver is mainly as follows:
 1. Analyze the radar configuration parameters and configure the radar software and hardware according to the parameters;
 2. Initialize the radar;
 3. If the initialization is successful, continue to the next step, otherwise exit;
@@ -145,7 +145,7 @@ cyberdog_lidar|V1.1.0.0|V1.0.0.0|2023-02-06|ShangZihan|none
 
 </center>
 
-> As shown in the figure above, the composition of the bionic robot radar drive architecture and the main functions of each component are as follows:
+As shown in the figure above, the composition of the bionic robot radar drive architecture and the main functions of each component are as follows:
 1. Lidar SDK: Provides radar firmware data collection and analysis functions under Linux;
 2. Utils: Provide common tools, such as logs;
 3. Radar software and hardware configuration function module: provide radar hardware and software configuration functions;

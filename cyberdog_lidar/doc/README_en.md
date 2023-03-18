@@ -39,7 +39,7 @@ cyberdog_lidar|V1.1.0.0|V1.0.0.0|2023-02-06|ShangZihan|none
 
 </center>
 
-> As shown in the figure above, the bionic robot radar driver is mainly used in scenarios where real-time feedback of obstacle distance and distance detection value intensity information in the bionic robot's environment is required.
+As shown in the figure above, the bionic robot radar driver is mainly used in scenarios where real-time feedback of obstacle distance and distance detection value intensity information in the bionic robot's environment is required.
 
 ## 3. Design
 ### 3.1. Feature design
@@ -50,7 +50,7 @@ cyberdog_lidar|V1.1.0.0|V1.0.0.0|2023-02-06|ShangZihan|none
 
 </center>
 
-> As shown in the figure above, the workflow of the bionic robot radar driver is mainly as follows:
+As shown in the figure above, the workflow of the bionic robot radar driver is mainly as follows:
 1. Analyze the radar configuration parameters and configure the radar software and hardware according to the parameters;
 2. Initialize the radar;
 3. If the initialization is successful, continue to the next step, otherwise exit;
@@ -66,7 +66,7 @@ cyberdog_lidar|V1.1.0.0|V1.0.0.0|2023-02-06|ShangZihan|none
 
 </center>
 
-> As shown in the figure above, the composition of the bionic robot radar drive architecture and the main functions of each component are as follows:
+As shown in the figure above, the composition of the bionic robot radar drive architecture and the main functions of each component are as follows:
 1. Lidar SDK: Provides radar firmware data collection and analysis functions under Linux;
 2. Utils: Provide common tools, such as logs;
 3. Radar software and hardware configuration function module: provide radar hardware and software configuration functions;
