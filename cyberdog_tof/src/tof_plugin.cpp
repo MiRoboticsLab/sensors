@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
+// Copyright (c) 2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -347,18 +347,18 @@ void cyberdog::sensor::TofCarpo::TofMsgCallback(
       if (data->enable_on_ack != 0) {
         ERROR("%s,enable_on ack err 0x:%x", label.group_name.c_str(), data->enable_on_ack);
       }
-      tof_map_.at(label.group_name)->GetData()->enable_on_signal.Give();
+      data->enable_on_signal.Give();
     } else if (label.name == "enable_off_ack") {
       if (data->enable_off_ack != 0) {
         ERROR("%s,enable_off ack err 0x:%x", label.group_name.c_str(), data->enable_off_ack);
       }
-      tof_map_.at(label.group_name)->GetData()->enable_off_signal.Give();
+      data->enable_off_signal.Give();
     } else if (label.name == "data") {
-      if (tof_map_.at(label.group_name)->GetData()->waiting_data) {
-        tof_map_.at(label.group_name)->GetData()->data_signal.Give();
+      if (data->waiting_data) {
+        data->data_signal.Give();
       }
-      if (!tof_map_.at(label.group_name)->GetData()->data_received) {
-        tof_map_.at(label.group_name)->GetData()->data_received = true;
+      if (!data->data_received) {
+        data->data_received = true;
       }
       const int datanum = protocol::msg::SingleTofPayload::TOF_DATA_NUM;
       std::vector<float> obj_data;
@@ -376,27 +376,27 @@ void cyberdog::sensor::TofCarpo::TofMsgCallback(
       if (tof_data_map_.find(label.group_name) == tof_data_map_.end()) {
         ERROR("data map no msg name %s", label.group_name.c_str());
       } else {
-        tof_map_.at(label.group_name)->GetData()->rx_cnt++;
+        data->rx_cnt++;
         if (!label.is_full) {
-          tof_map_.at(label.group_name)->GetData()->rx_error_cnt++;
+          data->rx_error_cnt++;
         }
 
         // msg check
         auto now = Clock::now();
         auto duration =
           std::chrono::duration_cast<std::chrono::milliseconds>(
-          now - tof_map_.at(label.group_name)->GetData()->time_start);
+          now - data->time_start);
         if (duration.count() >= kMsgCheckInterval) {
-          tof_map_.at(label.group_name)->GetData()->time_start = Clock::now();
-          if (tof_map_.at(label.group_name)->GetData()->rx_error_cnt > 0) {
+          data->time_start = Clock::now();
+          if (data->rx_error_cnt > 0) {
             WARN(
               "[%s] get error data:[%d]/[%d] ,interval[%d] !",
               label.group_name.c_str(), tof_map_.at(
                 label.group_name)->GetData()->rx_error_cnt, tof_map_.at(
                 label.group_name)->GetData()->rx_cnt, kMsgCheckInterval);
-            tof_map_.at(label.group_name)->GetData()->rx_error_cnt = 0;
+            data->rx_error_cnt = 0;
           }
-          tof_map_.at(label.group_name)->GetData()->rx_cnt = 0;
+          data->rx_cnt = 0;
         }
 
         tof_data_map_.at(label.group_name)->header.frame_id = label.group_name;
