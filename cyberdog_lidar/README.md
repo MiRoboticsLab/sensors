@@ -1,6 +1,6 @@
 # <center>cyberdog_lidar 设计文档</center>
 ```
-Copyright (c) 2023-2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
+Copyright (c) 2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the 'License');
 you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ limitations under the License.
 
 # <center>cyberdog_interactive design document</center>
 ```
-Copyright (c) 2023-2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
+Copyright (c) 2023 Beijing Xiaomi Mobile Software Co., Ltd. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the 'License');
 you may not use this file except in compliance with the License.
