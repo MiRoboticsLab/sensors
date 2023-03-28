@@ -5,6 +5,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+include_directories(/opt/ros2/galactic/include)
+link_directories(/opt/ros2/galactic/lib)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
@@ -12,7 +15,6 @@ find_package(pluginlib REQUIRED)
 find_package(params REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(cyberdog_common REQUIRED)
-find_package(bream_vendor REQUIRED)
 find_package(protocol REQUIRED)
 find_package(cyberdog_system REQUIRED)
 
@@ -22,6 +24,7 @@ add_library(${PROJECT_NAME} SHARED
   src/bcmgps_plugin.cpp
   src/bcm_gps.cpp
 )
+
 target_include_directories(${PROJECT_NAME} PUBLIC
 $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 $<INSTALL_INTERFACE:include>)
@@ -29,6 +32,8 @@ $<INSTALL_INTERFACE:include>)
 target_link_libraries(${PROJECT_NAME}
     ${cyberdog_log_LIBRARIES}
 )
+
+target_link_libraries(${PROJECT_NAME} bream_vendor)
 
 # define project name to get relative share path
 target_compile_definitions(${PROJECT_NAME} PRIVATE "PACKAGE_NAME=\"${PROJECT_NAME}\"")
@@ -41,7 +46,6 @@ ament_target_dependencies(
   rclcpp
   cyberdog_common
   ament_index_cpp
-  bream_vendor
   protocol
 )
 

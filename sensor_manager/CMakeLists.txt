@@ -13,6 +13,9 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
+
+link_directories(/opt/ros2/galactic/lib)
+
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(manager_base REQUIRED)
@@ -21,7 +24,6 @@ find_package(pluginlib REQUIRED)
 find_package(cyberdog_system REQUIRED)
 find_package(cyberdog_gps REQUIRED)
 find_package(cyberdog_lidar REQUIRED)
-find_package(bream_vendor REQUIRED)
 find_package(cyberdog_ultrasonic REQUIRED)
 find_package(cyberdog_common REQUIRED)
 find_package(cyberdog_tof REQUIRED)
