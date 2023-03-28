@@ -12,7 +12,6 @@ find_package(pluginlib REQUIRED)
 find_package(params REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(cyberdog_common REQUIRED)
-find_package(bream_vendor REQUIRED)
 find_package(protocol REQUIRED)
 find_package(ydlidar_sdk REQUIRED)
 find_package(filters REQUIRED)
@@ -42,7 +41,6 @@ ament_target_dependencies(
   rclcpp
   cyberdog_common
   ament_index_cpp
-  bream_vendor
   protocol
   filters
 )

@@ -15,7 +15,6 @@
   <depend>cyberdog_common</depend>
   <depend>cyberdog_system</depend>
   <depend>ament_index_cpp</depend>
-  <depend>bream_vendor</depend>
   <depend>protocol</depend>
   <depend>filters</depend>
 
