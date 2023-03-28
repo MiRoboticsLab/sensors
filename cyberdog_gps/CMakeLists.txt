@@ -73,4 +73,6 @@ endif()
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_export_targets(export_${PROJECT_NAME})
+ament_export_dependencies(bream_vendor)
+
 ament_package()

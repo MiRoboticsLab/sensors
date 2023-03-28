@@ -14,7 +14,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 
-link_directories(/opt/ros2/galactic/lib)
+# link_directories(/opt/ros2/galactic/lib)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
