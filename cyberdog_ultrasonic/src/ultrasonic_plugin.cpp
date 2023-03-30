@@ -325,7 +325,7 @@ bool cyberdog::sensor::UltrasonicCarpo::IsSingleStarted(const std::string & name
     return false;
   }
   ultrasonic_map_.at(name)->GetData()->waiting_data = true;
-  bool is_started = ultrasonic_map_.at(name)->GetData()->data_signal.WaitFor(200) ? false : true;
+  bool is_started = ultrasonic_map_.at(name)->GetData()->data_signal.WaitFor(1000) ? false : true;
   ultrasonic_map_.at(name)->GetData()->waiting_data = false;
   return is_started;
 }
@@ -337,7 +337,7 @@ bool cyberdog::sensor::UltrasonicCarpo::IsSingleClosed(const std::string & name)
     return false;
   }
   ultrasonic_map_.at(name)->GetData()->waiting_data = true;
-  bool is_closed = ultrasonic_map_.at(name)->GetData()->data_signal.WaitFor(200) ? true : false;
+  bool is_closed = ultrasonic_map_.at(name)->GetData()->data_signal.WaitFor(1000) ? true : false;
   ultrasonic_map_.at(name)->GetData()->waiting_data = false;
   ultrasonic_map_.at(name)->GetData()->data_received = false;
   return is_closed;

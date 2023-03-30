@@ -332,7 +332,7 @@ bool cyberdog::sensor::TofCarpo::IsSingleClosed(const std::string & name)
     return false;
   }
   tof_map_.at(name)->GetData()->waiting_data = true;
-  bool is_closed = tof_map_.at(name)->GetData()->data_signal.WaitFor(200) ? true : false;
+  bool is_closed = tof_map_.at(name)->GetData()->data_signal.WaitFor(500) ? true : false;
   tof_map_.at(name)->GetData()->waiting_data = false;
   tof_map_.at(name)->GetData()->data_received = false;
   return is_closed;
