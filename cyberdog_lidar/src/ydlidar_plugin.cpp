@@ -28,38 +28,6 @@ int32_t cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
   const SYS::ModuleCode kModuleCode = SYS::ModuleCode::kLidar;
   code_ = std::make_shared<SYS::CyberdogCode<YdlidarCode>>(kModuleCode);
 
-  std::string lidar_config_dir = ament_index_cpp::get_package_share_directory("params") +
-    "/toml_config/sensors/lidar.toml";
-  INFO("Params config file dir:%s", lidar_config_dir.c_str());
-
-  if (access(lidar_config_dir.c_str(), F_OK)) {
-    ERROR("Params config file does not exist");
-    return code_->GetKeyCode(SYS::KeyCode::kFailed);
-  }
-
-  if (access(lidar_config_dir.c_str(), R_OK)) {
-    ERROR("Params config file does not have read permissions");
-    return code_->GetKeyCode(SYS::KeyCode::kFailed);
-  }
-
-  // if (access(lidar_config_dir.c_str(), W_OK)) {
-  //   ERROR("Params config file does not have write permissions");
-  //   return code_->GetKeyCode(SYS::KeyCode::kFailed);
-  // }
-
-  if (!cyberdog::common::CyberdogToml::ParseFile(
-      lidar_config_dir.c_str(), this->params_toml_))
-  {
-    ERROR("Params config file is not in toml format");
-    return code_->GetKeyCode(SYS::KeyCode::kFailed);
-  }
-  this->filter_ = toml::find_or(
-    this->params_toml_, "dylidar", "filter", false);
-  this->filter_ptr_ = std::make_shared<Filter>("sensor_msgs::msg::LaserScan");
-  this->raw_scan_.header.frame_id = toml::find_or(
-    this->params_toml_, "dylidar", "frame_id", "laser_frame");
-  INFO("this->raw_scan_.header.frame_id = %s", this->raw_scan_.header.frame_id.c_str());
-
   if (!simulator) {
     this->Open = std::bind(&cyberdog::sensor::YdlidarCarpo::Open_, this);
     this->Start = std::bind(&cyberdog::sensor::YdlidarCarpo::Start_, this);
@@ -94,113 +62,147 @@ int32_t cyberdog::sensor::YdlidarCarpo::Init(bool simulator)
     this->Stop = std::bind(Simulator, SwitchState::stop);
     this->Close = std::bind(Simulator, SwitchState::close);
   }
+
+  if (this->update_data_thread_ptr_ == nullptr) {
+    this->update_data_thread_ptr_ = std::make_shared<std::thread>(
+      std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateData, this));
+    this->update_data_thread_ptr_->detach();
+  }
+
   return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 int32_t cyberdog::sensor::YdlidarCarpo::Open_()
 {
-  INFO("%s ydlidar ...", this->state_msg_[SwitchState::open].c_str());
+  INFO("Open ydlidar ...");
+  std::string lidar_config_dir = ament_index_cpp::get_package_share_directory("params") +
+    "/toml_config/sensors/lidar.toml";
+  INFO("Params config file dir:%s", lidar_config_dir.c_str());
+
+  if (access(lidar_config_dir.c_str(), F_OK)) {
+    ERROR("Params config file does not exist");
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+
+  if (access(lidar_config_dir.c_str(), R_OK)) {
+    ERROR("Params config file does not have read permissions");
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+
+  // if (access(lidar_config_dir.c_str(), W_OK)) {
+  //   ERROR("Params config file does not have write permissions");
+  //   return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  // }
+
+  toml::value params_toml;
+  if (!cyberdog::common::CyberdogToml::ParseFile(
+      lidar_config_dir.c_str(), params_toml))
+  {
+    ERROR("Params config file is not in toml format");
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+
+  this->filter_ = toml::find_or(
+    params_toml, "dylidar", "filter", false);
+  this->filter_ptr_ = std::make_shared<Filter>("sensor_msgs::msg::LaserScan");
+  this->raw_scan_.header.frame_id = toml::find_or(
+    params_toml, "dylidar", "frame_id", "laser_frame");
+
+  INFO("this->raw_scan_.header.frame_id = %s", this->raw_scan_.header.frame_id.c_str());
+
   if (this->lidar_ptr_ == nullptr) {
     this->lidar_ptr_ = std::make_shared<CYdLidar>();
   }
 
   std::string str_optvalue;
-  str_optvalue = toml::find_or(this->params_toml_, "dylidar", "port", "/dev/ydlidar");
+  str_optvalue = toml::find_or(params_toml, "dylidar", "port", "/dev/ydlidar");
   this->lidar_ptr_->setlidaropt(LidarPropSerialPort, str_optvalue.c_str(), str_optvalue.size());
-  DEBUG("[Open] dylidar->port = %s", str_optvalue.c_str());
+  INFO("[Open] dylidar->port = %s", str_optvalue.c_str());
 
-  str_optvalue = toml::find_or(this->params_toml_, "dylidar", "ignore_array", "");
+  str_optvalue = toml::find_or(params_toml, "dylidar", "ignore_array", "");
   this->lidar_ptr_->setlidaropt(LidarPropIgnoreArray, str_optvalue.c_str(), str_optvalue.size());
-  DEBUG("[Open] dylidar->ignore_array = %s", str_optvalue.c_str());
+  INFO("[Open] dylidar->ignore_array = %s", str_optvalue.c_str());
 
   int int_optvalue;
-  int_optvalue = toml::find_or(this->params_toml_, "dylidar", "baudrate", 512000);
+  int_optvalue = toml::find_or(params_toml, "dylidar", "baudrate", 512000);
   this->lidar_ptr_->setlidaropt(LidarPropSerialBaudrate, &int_optvalue, sizeof(int));
-  DEBUG("[Open] dylidar->baudrate = %d", int_optvalue);
+  INFO("[Open] dylidar->baudrate = %d", int_optvalue);
 
   int_optvalue =
     toml::find_or(
-    this->params_toml_, "dylidar", "lidar_type", static_cast<int>(LidarTypeID::TYPE_TOF));
+    params_toml, "dylidar", "lidar_type", static_cast<int>(LidarTypeID::TYPE_TOF));
   this->lidar_ptr_->setlidaropt(LidarPropLidarType, &int_optvalue, sizeof(int));
-  DEBUG("[Open] dylidar->lidar_type = %d", int_optvalue);
+  INFO("[Open] dylidar->lidar_type = %d", int_optvalue);
 
   int_optvalue =
     toml::find_or(
-    this->params_toml_, "dylidar", "device_type",
+    params_toml, "dylidar", "device_type",
     static_cast<int>(DeviceTypeID::YDLIDAR_TYPE_SERIAL));
   this->lidar_ptr_->setlidaropt(LidarPropDeviceType, &int_optvalue, sizeof(int));
-  DEBUG("[Open] dylidar->device_type = %d", int_optvalue);
+  INFO("[Open] dylidar->device_type = %d", int_optvalue);
 
-  int_optvalue = toml::find_or(this->params_toml_, "dylidar", "sample_rate", 9);
+  int_optvalue = toml::find_or(params_toml, "dylidar", "sample_rate", 9);
   this->lidar_ptr_->setlidaropt(LidarPropSampleRate, &int_optvalue, sizeof(int));
-  DEBUG("[Open] dylidar->sample_rate = %d", int_optvalue);
+  INFO("[Open] dylidar->sample_rate = %d", int_optvalue);
 
-  int_optvalue = toml::find_or(this->params_toml_, "dylidar", "abnormal_check_count", 4);
+  int_optvalue = toml::find_or(params_toml, "dylidar", "abnormal_check_count", 4);
   this->lidar_ptr_->setlidaropt(LidarPropAbnormalCheckCount, &int_optvalue, sizeof(int));
-  DEBUG("[Open] dylidar->sample_rate = %d", int_optvalue);
+  INFO("[Open] dylidar->sample_rate = %d", int_optvalue);
 
   bool bool_optvalue;
-  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "resolution_fixed", false);
+  bool_optvalue = toml::find_or(params_toml, "dylidar", "resolution_fixed", false);
   this->lidar_ptr_->setlidaropt(LidarPropFixedResolution, &bool_optvalue, sizeof(bool));
-  DEBUG("[Open] dylidar->resolution_fixed = %s", bool_optvalue ? "True" : "False");
+  INFO("[Open] dylidar->resolution_fixed = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "reversion", true);
+  bool_optvalue = toml::find_or(params_toml, "dylidar", "reversion", true);
   this->lidar_ptr_->setlidaropt(LidarPropReversion, &bool_optvalue, sizeof(bool));
-  DEBUG("[Open] dylidar->reversion = %s", bool_optvalue ? "True" : "False");
+  INFO("[Open] dylidar->reversion = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "inverted", true);
+  bool_optvalue = toml::find_or(params_toml, "dylidar", "inverted", true);
   this->lidar_ptr_->setlidaropt(LidarPropInverted, &bool_optvalue, sizeof(bool));
-  DEBUG("[Open] dylidar->inverted = %s", bool_optvalue ? "True" : "False");
+  INFO("[Open] dylidar->inverted = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "auto_reconnect", true);
+  bool_optvalue = toml::find_or(params_toml, "dylidar", "auto_reconnect", true);
   this->lidar_ptr_->setlidaropt(LidarPropAutoReconnect, &bool_optvalue, sizeof(bool));
-  DEBUG("[Open] dylidar->auto_reconnect = %s", bool_optvalue ? "True" : "False");
+  INFO("[Open] dylidar->auto_reconnect = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "isSingleChannel", false);
+  bool_optvalue = toml::find_or(params_toml, "dylidar", "isSingleChannel", false);
   this->lidar_ptr_->setlidaropt(LidarPropSingleChannel, &bool_optvalue, sizeof(bool));
-  DEBUG("[Open] dylidar->isSingleChannel = %s", bool_optvalue ? "True" : "False");
+  INFO("[Open] dylidar->isSingleChannel = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "intensity", false);
+  bool_optvalue = toml::find_or(params_toml, "dylidar", "intensity", false);
   this->lidar_ptr_->setlidaropt(LidarPropIntenstiy, &bool_optvalue, sizeof(bool));
-  DEBUG("[Open] dylidar->intensity = %s", bool_optvalue ? "True" : "False");
+  INFO("[Open] dylidar->intensity = %s", bool_optvalue ? "True" : "False");
 
-  bool_optvalue = toml::find_or(this->params_toml_, "dylidar", "support_motor_dtr", false);
+  bool_optvalue = toml::find_or(params_toml, "dylidar", "support_motor_dtr", false);
   this->lidar_ptr_->setlidaropt(LidarPropSupportMotorDtrCtrl, &bool_optvalue, sizeof(bool));
-  DEBUG("[Open] dylidar->support_motor_dtr = %s", bool_optvalue ? "True" : "False");
+  INFO("[Open] dylidar->support_motor_dtr = %s", bool_optvalue ? "True" : "False");
 
   float float_optvalue;
   float_optvalue =
-    toml::find_or(this->params_toml_, "dylidar", "angle_max", static_cast<float>(180.0f));
+    toml::find_or(params_toml, "dylidar", "angle_max", static_cast<float>(180.0f));
   this->lidar_ptr_->setlidaropt(LidarPropMaxAngle, &float_optvalue, sizeof(float));
-  DEBUG("[Open] dylidar->angle_max = %f", float_optvalue);
+  INFO("[Open] dylidar->angle_max = %f", float_optvalue);
 
   float_optvalue =
-    toml::find_or(this->params_toml_, "dylidar", "angle_min", static_cast<float>(-180.0f));
+    toml::find_or(params_toml, "dylidar", "angle_min", static_cast<float>(-180.0f));
   this->lidar_ptr_->setlidaropt(LidarPropMinAngle, &float_optvalue, sizeof(float));
-  DEBUG("[Open] dylidar->angle_min = %f", float_optvalue);
+  INFO("[Open] dylidar->angle_min = %f", float_optvalue);
 
   float_optvalue =
-    toml::find_or(this->params_toml_, "dylidar", "range_max", static_cast<float>(64.f));
+    toml::find_or(params_toml, "dylidar", "range_max", static_cast<float>(64.f));
   this->lidar_ptr_->setlidaropt(LidarPropMaxRange, &float_optvalue, sizeof(float));
-  DEBUG("[Open] dylidar->range_max = %f", float_optvalue);
+  INFO("[Open] dylidar->range_max = %f", float_optvalue);
 
   float_optvalue =
-    toml::find_or(this->params_toml_, "dylidar", "range_min", static_cast<float>(0.1f));
+    toml::find_or(params_toml, "dylidar", "range_min", static_cast<float>(0.1f));
   this->lidar_ptr_->setlidaropt(LidarPropMinRange, &float_optvalue, sizeof(float));
-  DEBUG("[Open] dylidar->range_min = %f", float_optvalue);
+  INFO("[Open] dylidar->range_min = %f", float_optvalue);
 
   this->frequency_ =
-    toml::find_or(this->params_toml_, "dylidar", "frequency", static_cast<float>(10.f));
+    toml::find_or(params_toml, "dylidar", "frequency", static_cast<float>(10.f));
   this->lidar_ptr_->setlidaropt(LidarPropScanFrequency, &this->frequency_, sizeof(float));
-  DEBUG("[Open] dylidar->frequency = %f", this->frequency_);
-
-  if (!this->lidar_ptr_->initialize()) {
-    ERROR(
-      "Ydlidar %s failed:%s",
-      this->state_msg_[SwitchState::open].c_str(), this->lidar_ptr_->DescribeError());
-    this->Close_();
-    return code_->GetKeyCode(SYS::KeyCode::kFailed);
-  }
+  INFO("[Open] dylidar->frequency = %f", this->frequency_);
 
   this->sensor_state_ = SwitchState::open;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
@@ -209,35 +211,25 @@ int32_t cyberdog::sensor::YdlidarCarpo::Open_()
 
 int32_t cyberdog::sensor::YdlidarCarpo::Start_()
 {
-  INFO("%s ydlidar ...", this->state_msg_[SwitchState::start].c_str());
+  INFO("Start ydlidar ...");
   if (this->lidar_ptr_ == nullptr) {
-    ERROR("Now Ydlidar is not yet opened.");
+    ERROR("Start ydlidar failed (Now Ydlidar is not yet opened).");
     return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
   if (this->sensor_state_ == SwitchState::start) {
+    INFO("Start ydlidar ok (consistent with the current state)");
     return code_->GetKeyCode(SYS::KeyCode::kOK);
   }
-  if (this->sensor_state_ != SwitchState::open) {
+  if (!this->lidar_ptr_->initialize()) {
+    ERROR("Start ydlidar failed (%s).", this->lidar_ptr_->DescribeError());
     this->lidar_ptr_->disconnecting();
-    if (this->Open_() != static_cast<int32_t>(SYS::KeyCode::kOK)) {
-      ERROR("Now is stop, open Ydlidar failed:%s", this->lidar_ptr_->DescribeError());
-      this->Close_();
-      return code_->GetKeyCode(SYS::KeyCode::kFailed);
-    }
-  }
-
-  if (!this->lidar_ptr_->turnOn()) {
-    ERROR("Ydlidar turnOn failed:%s", this->lidar_ptr_->DescribeError());
-    this->Close_();
     return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
-
-  if (this->update_data_thread_ptr_ == nullptr) {
-    this->update_data_thread_ptr_ = std::make_shared<std::thread>(
-      std::bind(&cyberdog::sensor::YdlidarCarpo::UpdateData, this));
-    this->update_data_thread_ptr_->detach();
+  if (!this->lidar_ptr_->turnOn()) {
+    ERROR("Start ydlidar (turnOn) failed (%s)", this->lidar_ptr_->DescribeError());
+    this->lidar_ptr_->disconnecting();
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
-
   this->sensor_state_ = SwitchState::start;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return code_->GetKeyCode(SYS::KeyCode::kOK);
@@ -245,13 +237,20 @@ int32_t cyberdog::sensor::YdlidarCarpo::Start_()
 
 int32_t cyberdog::sensor::YdlidarCarpo::Stop_()
 {
-  INFO("%s ydlidar ...", this->state_msg_[SwitchState::stop].c_str());
+  INFO("Stop ydlidar ...");
   if (this->lidar_ptr_ == nullptr) {
-    ERROR("Now Ydlidar is not yet opened.");
+    ERROR("Stop ydlidar failed (Now Ydlidar is not yet opened).");
     return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
-  this->lidar_ptr_->turnOff();
-
+  if (this->sensor_state_ == SwitchState::stop) {
+    INFO("Stop ydlidar ok (consistent with the current state)");
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
+  }
+  if (!this->lidar_ptr_->turnOff()) {
+    ERROR("Stop ydlidar (turnOff) failed (%s)", this->lidar_ptr_->DescribeError());
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  }
+  this->lidar_ptr_->disconnecting();
   this->sensor_state_ = SwitchState::stop;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return code_->GetKeyCode(SYS::KeyCode::kOK);
@@ -259,13 +258,15 @@ int32_t cyberdog::sensor::YdlidarCarpo::Stop_()
 
 int32_t cyberdog::sensor::YdlidarCarpo::Close_()
 {
-  INFO("%s ydlidar ...", this->state_msg_[SwitchState::close].c_str());
-  if (this->lidar_ptr_ == nullptr) {
-    ERROR("Now Ydlidar is not yet opened.");
-    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+  INFO("Close ydlidar ...");
+  if (this->sensor_state_ == SwitchState::close) {
+    INFO("Close ydlidar ok (consistent with the current state)");
+    return code_->GetKeyCode(SYS::KeyCode::kOK);
   }
-  this->lidar_ptr_->turnOff();
-  this->lidar_ptr_->disconnecting();
+  if (this->lidar_ptr_ != nullptr) {
+    this->Stop_();
+  }
+  this->lidar_ptr_ = nullptr;
   this->sensor_state_ = SwitchState::close;
   INFO("Ydlidar %s ok", this->state_msg_[this->sensor_state_].c_str());
   return code_->GetKeyCode(SYS::KeyCode::kOK);
@@ -279,7 +280,7 @@ void cyberdog::sensor::YdlidarCarpo::UpdateData()
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-    if (this->sensor_state_ != SwitchState::start) {
+    if ((this->sensor_state_ != SwitchState::start) || (this->lidar_ptr_ == nullptr)) {
       continue;
     }
     if (this->lidar_ptr_->doProcessSimple(this->scan_sdk)) {
@@ -328,7 +329,7 @@ void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-    if (this->sensor_state_ != SwitchState::start) {
+    if ((this->sensor_state_ != SwitchState::start) || (this->lidar_ptr_ == nullptr)) {
       continue;
     }
     this->raw_scan_.header.stamp = rclcpp::Clock(RCL_SYSTEM_TIME).now();
@@ -338,47 +339,76 @@ void cyberdog::sensor::YdlidarCarpo::UpdateSimulationData()
 
 int32_t cyberdog::sensor::YdlidarCarpo::SelfCheck()
 {
-  bool ret = false;
-  switch (this->sensor_state_) {
-    case SwitchState::open:
-      ret = true;
-      break;
-    case SwitchState::start:
-      ret = true;
-      break;
-    case SwitchState::stop:
-      ret = this->Start() && this->Stop();
-      break;
-    case SwitchState::close:
-      ret = this->Open() && this->Start() && this->Stop() && this->Close();
-      break;
-    default:
-      ret = false;
-      break;
-  }
-  if (ret) {
-    return code_->GetKeyCode(SYS::KeyCode::kOK);
-  } else {
+  INFO("SelfCheck ydlidar ...");
+  // auto self_check = [&]() -> int32_t {
+  //   switch (this->sensor_state_)
+  //   {
+  //   case SwitchState::open:
+  //     return this->Start() + this->Stop() + this->Close() +
+  //     this->Open() + this->Start() + this->Stop() + this->Start() + this->Stop() +
+  //     this->Close() + this->Open();
+  //   case SwitchState::start:
+  //     return this->Stop() + this->Close() +
+  //     this->Open() + this->Start() + this->Stop() + this->Start() + this->Stop() +
+  //     this->Close() + this->Open() + this->Start();
+
+  //   case SwitchState::stop:
+  //     return this->Close() +
+  //     this->Open() + this->Start() + this->Stop() + this->Start() + this->Stop() +
+  //     this->Close() + this->Open() + this->Start() + this->Stop();
+
+  //   case SwitchState::close:
+  //     return this->Open() + this->Start() + this->Stop() + this->Start() + this->Stop() +
+  //     this->Close() + this->Open() + this->Start() + this->Stop() + this->Close();
+
+  //   default:
+  //     return code_->GetKeyCode(SYS::KeyCode::kOK);
+  //     break;
+  //   }
+  // };
+  auto fast_self_check = [&]() -> int32_t {
+      switch (this->sensor_state_) {
+        case SwitchState::open:
+          return this->Start() + this->Stop() + this->Close() + this->Open();
+        case SwitchState::start:
+          return this->Stop() + this->Start() + this->Stop() + this->Start();
+        case SwitchState::stop:
+          return this->Close() + this->Open() + this->Start() + this->Stop();
+        case SwitchState::close:
+          return this->Open() + this->Start() + this->Stop() + this->Close();
+        default:
+          return code_->GetKeyCode(SYS::KeyCode::kOK);
+          break;
+      }
+    };
+  if (fast_self_check()) {
+    ERROR("SelfCheck ydlidar failed.");
     return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
+  INFO("Ydlidar self check ok");
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 int32_t cyberdog::sensor::YdlidarCarpo::LowPowerOn()
 {
-  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
-  if (Stop() != return_code) {
-    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  INFO("LowPowerOn ydlidar ...");
+  if (this->Stop()) {
+    ERROR("LowPowerOn ydlidar failed.");
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
-  return return_code;
+  INFO("Ydlidar low power on ok");
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 int32_t cyberdog::sensor::YdlidarCarpo::LowPowerOff()
 {
-  int32_t return_code = code_->GetKeyCode(SYS::KeyCode::kOK);
-  if (Start() != return_code) {
-    return_code = code_->GetKeyCode(SYS::KeyCode::kFailed);
+  INFO("LowPowerOff ydlidar ...");
+  if (this->Start()) {
+    ERROR("LowPowerOff ydlidar failed.");
+    return code_->GetKeyCode(SYS::KeyCode::kFailed);
   }
-  return return_code;
+  INFO("Ydlidar low power off ok");
+  return code_->GetKeyCode(SYS::KeyCode::kOK);
 }
 
 #include "pluginlib/class_list_macros.hpp"
