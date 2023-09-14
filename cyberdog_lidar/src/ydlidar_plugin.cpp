@@ -402,7 +402,7 @@ int32_t cyberdog::sensor::YdlidarCarpo::SelfCheck()
     };
   if (fast_self_check()) {
     ERROR("SelfCheck ydlidar failed.");
-    return code_->GetKeyCode(SYS::KeyCode::kFailed);
+    return code_->GetKeyCode(SYS::KeyCode::kSelfCheckFailed);
   }
   INFO("Ydlidar self check ok");
   return code_->GetKeyCode(SYS::KeyCode::kOK);
