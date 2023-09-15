@@ -30,39 +30,68 @@ class SensorSelfCheck final
 public:
   SensorSelfCheck()
   {
-    std::vector<std::string> target_vec_;
+    std::vector<std::string> target_vec;
+    std::vector<std::string> critical_moudle_vec;
     auto local_share_dir = ament_index_cpp::get_package_share_directory("params");
-    auto path = local_share_dir + std::string("/toml_config/sensors/sensor_self_check.toml");
+    auto path = local_share_dir + std::string("/toml_config/manager/selfcheck_config.toml");
     toml::value config;
     if (common::CyberdogToml::ParseFile(path, config)) {
       INFO("Parse Self Check config file started, toml file is valid");
       toml::value sensors_sec;
       if (common::CyberdogToml::Get(config, "sensors", sensors_sec)) {
         INFO("Self Check init started, parse sensors config succeed");
-        if (common::CyberdogToml::Get(sensors_sec, "jump", target_vec_)) {
+        if (common::CyberdogToml::Get(sensors_sec, "jump", target_vec)) {
           INFO("Self Check init started, parse jump array succeed");
+        }
+        if (common::CyberdogToml::Get(sensors_sec, "critical", critical_moudle_vec)) {
+          INFO("Self Check init started, parse critical array succeed");
         }
       }
     }
-    if (target_vec_.size() > 0) {
-      for (auto & elem : target_vec_) {
-        if (self_check_map.find(elem) != self_check_map.end()) {
-          self_check_map[elem] = true;
+    if (target_vec.size() > 0) {
+      for (auto & elem : target_vec) {
+        if (self_check_map_.find(elem) != self_check_map_.end()) {
+          self_check_map_[elem] = true;
         }
       }
+    } else {
+      INFO("jump sensors is empty");
+    }
+    if (critical_moudle_vec.size() > 0) {
+      for (auto & elem : critical_moudle_vec) {
+        if (critical_moudle_map_.find(elem) != critical_moudle_map_.end()) {
+          critical_moudle_map_[elem] = true;
+        }
+      }
+    } else {
+      INFO("critical sensors is empty");
     }
   }
 
   bool IsJump(const std::string name)
   {
-    if (self_check_map.find(name) != self_check_map.end()) {
-      return self_check_map[name];
+    if (self_check_map_.find(name) != self_check_map_.end()) {
+      return self_check_map_[name];
+    }
+    return false;
+  }
+
+  bool IsCritical(const std::string & name)
+  {
+    if (critical_moudle_map_.find(name) != critical_moudle_map_.end()) {
+      return critical_moudle_map_[name];
     }
     return false;
   }
 
 private:
-  std::map<std::string, bool> self_check_map = {
+  std::map<std::string, bool> self_check_map_ = {
+    {"lidar", false},
+    {"gps", false},
+    {"ultrasonic", false},
+    {"tof", false}
+  };
+  std::map<std::string, bool> critical_moudle_map_ = {
     {"lidar", false},
     {"gps", false},
     {"ultrasonic", false},
