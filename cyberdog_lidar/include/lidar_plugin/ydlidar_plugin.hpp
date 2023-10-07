@@ -60,7 +60,6 @@ public:
   };
 
 private:
-  toml::value params_toml_;                                           /*!< 参数 */
   float frequency_;                                                   /*!< 频率 */
   LaserScan scan_sdk;                                                 /*!< 激光数据 */
   std::map<SwitchState, std::string> state_msg_;                      /*!< 状态消息 */
